@@ -12,7 +12,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """application configuration."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -48,5 +47,5 @@ class Settings(BaseSettings):
         return max(0.0, min(1.0, v))
 
 
-# Module-level instance 
+# instance to import 
 settings = Settings()

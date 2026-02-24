@@ -10,8 +10,6 @@ Verify values against: https://schema.ocsf.io/
 """
 
 # -- Valid OCSF Event Class UIDs ------------------------------------------
-# Frozen set signals these are constant, not mutable at runtime.
-# Maps class_uid → class_name for the event classes.
 
 VALID_CLASS_UIDS: dict[int, str] = {
     # System Activity (category_uid 1)
@@ -89,7 +87,6 @@ VALID_CLASS_UID_SET: frozenset[int] = frozenset(VALID_CLASS_UIDS.keys())
 
 
 # -- Severity IDs ------------------------------------------
-# OCSF severity_id enum — applies to all event classes.
 
 SEVERITY_IDS: dict[int, str] = {
     0: "Unknown",
@@ -102,34 +99,17 @@ SEVERITY_IDS: dict[int, str] = {
     99: "Other"
 }
 
-VALID_SEVERITY_IDS: frozenset[int] = frozenset(SEVERITY_IDS.keys())  # {0,1,2,3,4,5,6,99}
-
-
-# -- Disposition IDs ------------------------------------------
-# Common disposition values across event classes.
-
-DISPOSITION_IDS: dict[int, str] = {
-    1: "Allowed",
-    2: "Blocked",
-    3: "Quarantined",
-    4: "Isolated",
-    5: "Deleted",
-    6: "Dropped",
-    99: "Other",
-}
+VALID_SEVERITY_IDS: frozenset[int] = frozenset(SEVERITY_IDS.keys())  
 
 
 # -- Class-Specific Required Fields -----------------------------------------
 # Maps class_uid → list of field names that MUST be present for that class
 # to be considered a valid OCSF event. Used by the confidence scorer to
 # evaluate output quality.
-#
-# These are the "recommended" or "required" fields per the OCSF spec for
-# each class. A missing field here doesn't make the JSON invalid — it makes
-# the normalization incomplete.
+
 
 CLASS_REQUIRED_FIELDS: dict[int, list[str]] = {
-    4001: ["src_endpoint", "dst_endpoint"],       # Network Activity
+    4001: ["src_endpoint", "dst_endpoint"],        # Network Activity
     4002: ["http_request"],                        # HTTP Activity
     4003: ["query"],                               # DNS Activity
     4004: ["src_endpoint"],                        # DHCP Activity
@@ -148,9 +128,8 @@ CLASS_REQUIRED_FIELDS: dict[int, list[str]] = {
 #
 # Example: Network Activity (4001) + Traffic (5) = 400105
 #
-# This is NOT a function — just documentation. The validation logic lives
-# in confidence_scorer.py. Keeping the formula here as a comment ensures
-# anyone reading this file understands the relationship.
+# The validation logic lives in confidence_scorer.py. 
+
 TYPE_UID_MULTIPLIER = 100  # type_uid = class_uid * TYPE_UID_MULTIPLIER + activity_id
 
 
