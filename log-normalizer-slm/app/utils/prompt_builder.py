@@ -6,7 +6,7 @@ def build_prompt(raw_log, source: str, format: str,  examples: list[dict] | None
     if examples: 
         for example in examples:
             example = _add_example(example['raw_log'], example['ocsf'], example["source"], example['format'])
-            message.append(example)
+            message.extend(example)
             
     message.append(_make_log_prompt(raw_log))
 
