@@ -1,20 +1,19 @@
 def build_prompt(raw_log, source: str, format: str,  examples: list[dict] | None = None) -> list: 
     message = []
     
-    message.append(make_system_prompt(source, format))
+    message.append(_make_system_prompt(source, format))
 
     if examples: 
         for example in examples:
-            example = add_example(example['raw_log'], example['ocsf'], example["source"], example['format'])
+            example = _add_example(example['raw_log'], example['ocsf'], example["source"], example['format'])
             message.append(example)
             
-
-    message.append(make_log_prompt(raw_log))
+    message.append(_make_log_prompt(raw_log))
 
     return message
 
 
-def make_system_prompt(source, format) -> dict:
+def _make_system_prompt(source, format) -> dict:
     prompt = f"""You are a log normalizer. Your job is to normalize the given log produced by {source} in {format} format to OCSF format (Open Cybersecurity Schema Format).
         instructions: 
             - Return ONLY valid JSON. No explanation. No markdown. No code fences.
@@ -27,7 +26,7 @@ def make_system_prompt(source, format) -> dict:
     
     return {"role": "system", "content": prompt}
 
-def add_example(log, ocsf, source, format) -> list:
+def _add_example(log, ocsf, source, format) -> list:
 
     user_prompt = f"Normalize this {source} log formatted in {format} format: {log}"
     assistant_prompt = f"{ocsf}"
@@ -35,10 +34,8 @@ def add_example(log, ocsf, source, format) -> list:
     return [{"role": "user", "content": user_prompt}, {"role": "assistant", "content": assistant_prompt}]
 
 
-def make_log_prompt(raw_log) -> dict:
+def _make_log_prompt(raw_log) -> dict:
     prompt = f"""Log to normalize:
         {raw_log}"""
     
     return {"role": "user", "content": prompt}
-
-
