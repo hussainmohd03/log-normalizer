@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     # -- Model settings ---------
     model_path: str = "./models/phi-3-mini-base"
     device: str = "auto"
-    temperature: float = 0.05
-    max_new_tokens: int = 1024
+    temperature: float = 0.1
+    max_new_tokens: int = 2048
 
     # -- Confidence settings --------- 
     confidence_threshold: float = 0.85
