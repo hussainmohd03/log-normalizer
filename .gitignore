@@ -23,6 +23,7 @@ lerna-debug.log*
 # Tests
 coverage
 .nyc_output
+raw_alerts.json
 
 # IDEs and editors
 /.idea
