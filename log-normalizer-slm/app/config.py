@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # -- Model settings ---------
-    model_path: str = "./models/phi-3-mini-base"
+    base_model_path: str = "DeepHat/DeepHat-V1-7B"
+    adapter_path: str = "./models/deephat-finetuned" 
     device: str = "auto"
     temperature: float = 0.1
     max_new_tokens: int = 2048
