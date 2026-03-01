@@ -7,6 +7,9 @@ from typing import Optional
 from .inference import run_inference
 from app.config import settings
 
+import logging
+logger = logging.getLogger(__name__)
+
 class ModelManager: 
     def __init__(self):
         self.model = None
@@ -18,14 +21,18 @@ class ModelManager:
 
         path = settings.base_model_path
         try: 
+            logger.info(f"Loading model from {path}...")
+            
             quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=torch.float16
             )
 
+
             tokenizer = AutoTokenizer.from_pretrained(path)
             tokenizer.pad_token = tokenizer.eos_token
             self.tokenizer = tokenizer
+
 
             model = AutoModelForCausalLM.from_pretrained(
             path,
@@ -35,13 +42,17 @@ class ModelManager:
             )
             self.model = model
 
+            logger.info(f"Model loaded on {self.model.device}")
             
             has_adapter = os.path.exists(os.path.join(settings.adapter_path, "adapter_config.json"))
 
             if has_adapter: 
                 self.model = PeftModel.from_pretrained(self.model, settings.adapter_path)
+                logger.info(f"LoRA adapter loaded from {settings.adapter_path}")
             
             self.is_ready = True
+            logger.info("Model ready for inference")
+
 
         except OSError: 
             self.load_error = f"Model not found at {path}"
@@ -52,6 +63,9 @@ class ModelManager:
                 self.load_error = f"Runtime error: {str(err)}"
         except Exception as err:
             self.load_error = f"Unexpected error: {str(err)}"
+        finally:
+            if self.load_error:
+                logger.error(self.load_error)
                         
 
 

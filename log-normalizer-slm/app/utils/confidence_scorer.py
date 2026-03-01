@@ -1,6 +1,7 @@
 """
 produce a float 0.0–1.0 representing output quality. This score drives routing: below settings.confidence_threshold -> manual review queue.
 """
+from typing import Any
 
 from ..schemas.ocsf_types import (
     VALID_CLASS_UID_SET,
@@ -10,8 +11,8 @@ from ..schemas.ocsf_types import (
     VALID_SEVERITY_IDS
 )
 
-def score_confidence(ocsf: dict) -> float:
-    score = 0
+def score_confidence(ocsf: dict[str, Any]) -> float:
+    score = 0.0
     base_weight = 0.4               # require base fields weight more heavily since they are fundamental to OCSF structure
     class_weight = 0.25             # class_uid and class-specific fields are next most important since they determine the event's category and essential details
     type_formula_weight = 0.2       # type_uid is important but can be derived from class_uid, so it gets slightly less weight

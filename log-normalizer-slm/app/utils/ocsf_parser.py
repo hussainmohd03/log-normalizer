@@ -1,8 +1,10 @@
 import json
 import re
+from typing import Any
 
 
-def extract_json(raw_output: str) -> dict | None:
+
+def extract_json(raw_output: str) -> dict[str, Any] | None:
 
     try: 
         return json.loads(raw_output)
