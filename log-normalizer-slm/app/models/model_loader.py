@@ -56,7 +56,6 @@ class ModelManager:
 
 
 
-
     def generate(self, prompt: list[dict]): 
         if not self.is_ready: 
             raise RuntimeError("Model not loaded")

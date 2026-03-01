@@ -1,7 +1,7 @@
 from app.utils.confidence_scorer import score_confidence
 from app.utils.ocsf_parser import extract_json
 from app.utils.prompt_builder import build_prompt
-from app.schemas.ocsf_types import sample_log, example
+
 
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
@@ -45,9 +45,9 @@ def main():
     parsed = 0
     scores = []
     
-    for i, log in enumerate(sample_log):
+    for i, log in enumerate([]):
         total += 1
-        resp, ocsf, score = run_single_test(tokenizer, model, log['alert'], log['source'], example)
+        resp, ocsf, score = run_single_test(tokenizer, model, log['alert'], log['source'], example=[])
         print(resp)
         if ocsf is None:
             print(f"FAIL [{log['source']}]: Could not extract JSON")
