@@ -3,7 +3,7 @@ produce a float 0.0–1.0 representing output quality. This score drives routing
 """
 from typing import Any
 
-from ..schemas.ocsf_types import (
+from app.schemas.ocsf_types import (
     VALID_CLASS_UID_SET,
     CLASS_REQUIRED_FIELDS,
     TYPE_UID_MULTIPLIER,
