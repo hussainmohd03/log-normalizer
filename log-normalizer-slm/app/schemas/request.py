@@ -4,7 +4,7 @@ Request schema for the normalize endpoint.
 
 import re
 from enum import Enum
-
+import json
 from pydantic import BaseModel, field_validator
 
 
@@ -24,13 +24,14 @@ class NormalizeRequest(BaseModel):
     source: str
     format: LogFormat = LogFormat.UNKNOWN
 
-    @field_validator("raw_log")
+    @field_validator("raw_log", mode="before")
     @classmethod
-    def raw_log_not_empty(cls, v: str) -> str:
+    def raw_log_not_empty(cls, v):
+        if isinstance(v, dict):
+            v = json.dumps(v)
         stripped = v.strip()
         if not stripped:
             raise ValueError("raw_log must not be empty")
-
         return stripped
 
     @field_validator("source")

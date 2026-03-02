@@ -28,7 +28,6 @@ class ModelManager:
             bnb_4bit_compute_dtype=torch.float16
             )
 
-
             tokenizer = AutoTokenizer.from_pretrained(path)
             tokenizer.pad_token = tokenizer.eos_token
             self.tokenizer = tokenizer
@@ -50,6 +49,8 @@ class ModelManager:
                 self.model = PeftModel.from_pretrained(self.model, settings.adapter_path)
                 logger.info(f"LoRA adapter loaded from {settings.adapter_path}")
             
+
+            torch.cuda.empty_cache()
             self.is_ready = True
             logger.info("Model ready for inference")
 

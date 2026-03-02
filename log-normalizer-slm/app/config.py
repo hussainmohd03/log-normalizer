@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     adapter_path: str = "./models/deephat-finetuned" 
     device: str = "auto"
     temperature: float = 0.1
-    max_new_tokens: int = 2048
+    max_new_tokens: int = 2700
 
     # -- Confidence settings --------- 
     confidence_threshold: float = 0.85
