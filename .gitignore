@@ -16,6 +16,10 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+log-normalizer-slm/data/labeled/*
+log-normalizer-slm/data/raw/*
+log-normalizer-slm/data/labeling/*
+
 # OS
 .DS_Store
 .claude

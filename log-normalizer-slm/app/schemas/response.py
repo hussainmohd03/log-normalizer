@@ -1,7 +1,7 @@
 """
 Response schema for the normalize endpoint.
 
-This is the contract that NestJS depends on in Phase 4. Changes to this
+This is the contract that NestJS depends on. Changes to this
 shape are breaking changes.
 
 Handles both success and partial failure in one model:
@@ -27,4 +27,4 @@ class NormalizeResponse(BaseModel):
     @field_validator("confidence")
     @classmethod
     def clamp_confidence(cls, v: float) -> float:
-        return max(0.0, min(1.0, float(v)))
+        return max(0.0, min(1.0, float(v)))  
