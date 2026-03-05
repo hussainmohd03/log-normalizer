@@ -18,7 +18,10 @@ lerna-debug.log*
 
 log-normalizer-slm/data/labeled/*
 log-normalizer-slm/data/raw/*
-log-normalizer-slm/data/labeling/*
+log-normalizer-slm/data/labeling/vendors/*
+log-normalizer-slm/data/labeling/convert_to_training.py
+log-normalizer-slm/data/labeling/label.py
+log-normalizer-slm/data/labeling/validate.py
 
 # OS
 .DS_Store
