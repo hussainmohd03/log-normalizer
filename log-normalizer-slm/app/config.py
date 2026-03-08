@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # -- Model settings ---------
-    base_model_path: str = "DeepHat/DeepHat-V1-7B"
+    base_model_path: str = "fdtn-ai/Foundation-Sec-1.1-8B-Instruct"
     adapter_path: str = "./models/deephat-finetuned" 
     device: str = "auto"
     temperature: float = 0.1

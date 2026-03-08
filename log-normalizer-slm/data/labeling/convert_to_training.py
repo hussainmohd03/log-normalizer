@@ -22,7 +22,10 @@ Rules:
 - MITRE ATT&CK goes inside finding_info.attacks[].
 - User info goes in device.owner or evidences[].actor.user.
 - Never put process, src_endpoint, dst_endpoint, attacks, or user at the top level.
+- Place vendor-specific fields that have no OCSF equivalent in an unmapped object. Never invent OCSF field names. 
 - Include observables[] with key IOCs (IPs, hashes, domains, emails, usernames).
+- The severity_id enum values (0=Unknown through 6=Fatal, and 99=Other)            
+- The type_uid formula: type_uid = class_uid * 100 + activity_id
 - Omit fields with no value. No nulls, no empty strings, no placeholders."""
 
 
@@ -49,8 +52,8 @@ def convert_label(label: dict) -> dict:
 
 
 def main():
-    input_path = Path("labeled_output_training.jsonl")
-    output_path = Path("training_chat.jsonl")
+    input_path = Path(r"C:\Users\ha604\Desktop\poly\CLP\log-normalizer\log-normalizer-slm\data\labeled\labeled_output_training.jsonl")
+    output_path = Path(r"C:\Users\ha604\Desktop\poly\CLP\log-normalizer\log-normalizer-slm\data\labeled\training_chat.jsonl")
     
     if not input_path.exists():
         print(f"ERROR: {input_path} not found")
