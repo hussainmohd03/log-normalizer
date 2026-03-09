@@ -2,6 +2,7 @@ import os
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import PeftModel
+from pathlib import Path
 
 from typing import Optional
 from .inference import run_inference
@@ -43,11 +44,13 @@ class ModelManager:
 
             logger.info(f"Model loaded on {self.model.device}")
             
-            has_adapter = os.path.exists(os.path.join(settings.adapter_path, "adapter_config.json"))
+            path = Path(__file__).parent / settings.adapter_path
+            has_adapter = os.path.exists(os.path.join(path, "adapter_config.json"))
+            
 
             if has_adapter: 
-                self.model = PeftModel.from_pretrained(self.model, settings.adapter_path)
-                logger.info(f"LoRA adapter loaded from {settings.adapter_path}")
+                self.model = PeftModel.from_pretrained(self.model, path)
+                logger.info(f"LoRA adapter loaded from {path}")
             
 
             torch.cuda.empty_cache()

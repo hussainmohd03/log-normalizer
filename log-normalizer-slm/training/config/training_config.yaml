@@ -1,0 +1,38 @@
+model:
+  base_model: 'fdtn-ai/Foundation-Sec-1.1-8B-Instruct'
+  output_dir: '../../models/foundation-sec-finetuned'
+  load_in_4bit: True
+  bnb_4bit_compute_dtype: 'bfloat16'
+  bnb_4bit_use_double_quant: True
+  bnb_4bit_quant_type: 'nf4'
+
+lora:
+  r: 16
+  lora_alpha: 32
+  target_modules: ['q_proj', 'k_proj', 'v_proj', 'o_proj']
+  lora_dropout: 0.05
+  bias: 'none'
+  task_type: 'CAUSAL_LM'
+
+training:
+  num_train_epochs: 3
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 2
+  learning_rate: 2.0e-4
+  warmup_ratio: 0.05
+  logging_steps: 5
+  save_steps: 50
+  eval_steps: 50
+  eval_strategy: 'steps'
+  save_strategy: 'steps'
+  save_total_limit: 3
+  load_best_model_at_end: true
+  metric_for_best_model: 'eval_loss'
+  bf16: true
+  gradient_checkpointing: true
+  max_length: 16384
+
+data:
+  train_file: 'train.jsonl'
+  val_file: 'val.jsonl'
+  test_file: 'test.jsonl'

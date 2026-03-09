@@ -52,8 +52,9 @@ def convert_label(label: dict) -> dict:
 
 
 def main():
-    input_path = Path(r"C:\Users\ha604\Desktop\poly\CLP\log-normalizer\log-normalizer-slm\data\labeled\labeled_output_training.jsonl")
-    output_path = Path(r"C:\Users\ha604\Desktop\poly\CLP\log-normalizer\log-normalizer-slm\data\labeled\training_chat.jsonl")
+    parent_folder = Path(__file__).parent.parent 
+    input_path = parent_folder / 'labeled' / 'labeled_output_training.jsonl'
+    output_path = parent_folder / 'labeled' / 'training_chat.jsonl'
     
     if not input_path.exists():
         print(f"ERROR: {input_path} not found")

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # -- Model settings ---------
     base_model_path: str = "fdtn-ai/Foundation-Sec-1.1-8B-Instruct"
-    adapter_path: str = "./models/deephat-finetuned" 
+    adapter_path: str = "foundation-sec-finetuned" 
     device: str = "auto"
     temperature: float = 0.1
     max_new_tokens: int = 2700
