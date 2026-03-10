@@ -1,6 +1,8 @@
 from pydantic import BaseModel, field_validator
 from typing import Optional
 
+from ocsf.objects.finding_info import FindingInfo
+
 class DetectionFinding(BaseModel):
     # Required
     activity_id: int
