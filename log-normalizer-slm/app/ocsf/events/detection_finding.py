@@ -1,11 +1,12 @@
 from pydantic import BaseModel, field_validator
 from typing import Optional
 
+from objects.resource_details import ResourceDetails
 from ocsf.objects.finding_info import FindingInfo
 from ocsf.objects.metadata import Metadata
+from objects.observable import Observable
 from objects.evidence import Evidence
 from objects.device import Device
-
 class DetectionFinding(BaseModel):
     # Required
     activity_id: int
