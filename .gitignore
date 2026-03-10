@@ -18,6 +18,8 @@ lerna-debug.log*
 
 log-normalizer-slm/data/labeled/*
 log-normalizer-slm/data/raw/*
+log-normalizer-slm/training/splits/*
+log-normalizer-slm/app/models/foundation-sec-finetuned/*
 
 
 # OS
