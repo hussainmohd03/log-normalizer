@@ -2,6 +2,8 @@ from pydantic import BaseModel, field_validator
 from typing import Optional
 
 from ocsf.objects.finding_info import FindingInfo
+from ocsf.objects.metadata import Metadata
+from objects.device import Device
 
 class DetectionFinding(BaseModel):
     # Required
