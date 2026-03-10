@@ -5,6 +5,7 @@ from objects.resource_details import ResourceDetails
 from ocsf.objects.finding_info import FindingInfo
 from ocsf.objects.metadata import Metadata
 from objects.observable import Observable
+from objects.enrichment import Enrichment
 from objects.evidence import Evidence
 from objects.device import Device
 class DetectionFinding(BaseModel):
