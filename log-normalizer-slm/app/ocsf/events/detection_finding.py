@@ -3,6 +3,7 @@ from typing import Optional
 
 from ocsf.objects.finding_info import FindingInfo
 from ocsf.objects.metadata import Metadata
+from objects.evidence import Evidence
 from objects.device import Device
 
 class DetectionFinding(BaseModel):
@@ -55,6 +56,8 @@ class DetectionFinding(BaseModel):
     # Data
     unmapped: Optional[dict] = None
     raw_data: Optional[str] = None
+
+    model_config = {"populate_by_name": True}
 
     @field_validator("class_uid")
     @classmethod
