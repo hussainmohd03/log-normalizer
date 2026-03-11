@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from objects.user import User
@@ -13,3 +13,5 @@ class Process(BaseModel):
     file: Optional[File] = None
     user: Optional[User] = None
     parent_process: Optional["Process"] = None  # recursive
+
+    model_config = ConfigDict(extra="forbid")

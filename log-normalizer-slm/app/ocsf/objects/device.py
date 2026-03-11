@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from objects.os import OS
@@ -22,3 +22,5 @@ class Device(BaseModel):
     org: Optional[Organization] = None
     owner: Optional[User] = None
     agent: Optional[list[Agent]] = None
+
+    model_config = ConfigDict(extra="forbid")

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from objects.service import Service
@@ -9,3 +9,5 @@ class API(BaseModel):
     service: Optional[Service] = None
     request: Optional[Request] = None
     response: Optional[Response] = None
+
+    model_config = ConfigDict(extra="forbid")

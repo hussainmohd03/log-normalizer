@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from objects.filehash import FileHash
@@ -11,3 +11,5 @@ class File(BaseModel):
     type: Optional[str] = None
     type_id: Optional[FileTypeId] = None
     size: Optional[int] = None
+
+    model_config = ConfigDict(extra="forbid")

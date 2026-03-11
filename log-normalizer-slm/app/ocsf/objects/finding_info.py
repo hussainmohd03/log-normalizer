@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from objects.analytics import Analytic
@@ -19,3 +19,5 @@ class FindingInfo(BaseModel):
     analytic: Optional[Analytic] = None
     attacks: Optional[list[Attack]] = None
     product: Optional[Product] = None
+
+    model_config = ConfigDict(extra="forbid")

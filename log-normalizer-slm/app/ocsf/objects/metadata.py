@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from objects.product import Product
@@ -13,3 +13,5 @@ class Metadata(BaseModel):
     profiles: Optional[list[str]] = None
     original_time: Optional[str] = None
     log_format: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")

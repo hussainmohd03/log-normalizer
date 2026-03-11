@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from ocsf.enums import OSTypeId
 class OS(BaseModel):
@@ -7,5 +7,4 @@ class OS(BaseModel):
     type_id: Optional[OSTypeId] = None
     version: Optional[str] = None
 
-
-    
+    model_config = ConfigDict(extra="forbid")

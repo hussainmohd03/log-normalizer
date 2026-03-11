@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from ocsf.objects.product import Product
@@ -8,22 +8,20 @@ class CWE(BaseModel):
     caption: Optional[str] = None
     src_url: Optional[str] = None
 
-    model_config = {"extra": "forbid"}
-
+    model_config = ConfigDict(extra="forbid")
 
 class CVSSScore(BaseModel):
     version: Optional[str] = None
     base_score: Optional[float] = None
     severity: Optional[str] = None
 
-    model_config = {"extra": "forbid"}
-
+    model_config = ConfigDict(extra="forbid")
 
 class EPSS(BaseModel):
     score: Optional[float] = None
     percentile: Optional[float] = None
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 class CVE(BaseModel):
     uid: str
@@ -38,5 +36,4 @@ class CVE(BaseModel):
     references: Optional[list[str]] = None
     related_cwes: Optional[list[CWE]] = None
 
-    model_config = {"extra": "forbid"}
-
+    model_config = ConfigDict(extra="forbid")

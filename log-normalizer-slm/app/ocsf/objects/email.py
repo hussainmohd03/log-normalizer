@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
 from objects.file import File
@@ -9,3 +9,5 @@ class Email(BaseModel):
     subject: Optional[str] = None
     uid: Optional[str] = None
     files: Optional[list[File]] = None
+
+    model_config = ConfigDict(extra="forbid")

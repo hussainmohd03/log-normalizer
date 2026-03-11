@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 class Location(BaseModel):
@@ -6,3 +6,5 @@ class Location(BaseModel):
     country: Optional[str] = None
     lat: Optional[float] = None
     long: Optional[float] = None
+
+    model_config = ConfigDict(extra="forbid")

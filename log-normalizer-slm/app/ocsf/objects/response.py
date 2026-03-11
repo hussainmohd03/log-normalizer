@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 class Response(BaseModel):
@@ -7,3 +7,5 @@ class Response(BaseModel):
     error: Optional[str] = None
     error_message: Optional[str] = None
     code: Optional[int] = None
+
+    model_config = ConfigDict(extra="forbid")

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 class Agent(BaseModel):
@@ -6,3 +6,5 @@ class Agent(BaseModel):
     uid: Optional[str] = None
     version: Optional[str] = None
     type: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")

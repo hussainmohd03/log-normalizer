@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Optional
 
 from ocsf.enums import SeverityId, StatusId, RiskLevelId
@@ -64,7 +64,9 @@ class DetectionFinding(BaseModel):
     unmapped: Optional[dict] = None
     raw_data: Optional[str] = None
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+    
+    
 
     @field_validator("class_uid")
     @classmethod

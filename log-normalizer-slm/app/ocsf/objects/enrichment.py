@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 class Enrichment(BaseModel):
@@ -8,3 +8,5 @@ class Enrichment(BaseModel):
     provider: Optional[str] = None
     data: Optional[dict] = None
     desc: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")

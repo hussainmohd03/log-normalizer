@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from objects.organization import Organization
@@ -12,3 +12,5 @@ class User(BaseModel):
     type_id: Optional[UserTypeId] = None
     account: Optional[Account] = None
     org: Optional[Organization] = None
+
+    model_config = ConfigDict(extra="forbid")

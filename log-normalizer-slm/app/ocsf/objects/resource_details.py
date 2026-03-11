@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from objects.user import User
@@ -11,3 +11,5 @@ class ResourceDetails(BaseModel):
     uid: Optional[str] = None
     type: Optional[str] = None
     data: Optional[dict] = None
+
+    model_config = ConfigDict(extra="forbid")

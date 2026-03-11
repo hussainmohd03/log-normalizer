@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 class Analytic(BaseModel):
@@ -6,3 +6,5 @@ class Analytic(BaseModel):
     type: Optional[str] = None
     type_id: Optional[int] = None
     uid: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")

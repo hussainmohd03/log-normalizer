@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 from objects.process import Process
@@ -18,4 +18,4 @@ class Evidence(BaseModel):
     email: Optional[Email] = None
     data: Optional[dict] = None
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
