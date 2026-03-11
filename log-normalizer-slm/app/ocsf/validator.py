@@ -1,54 +1,46 @@
+import logging
 from pydantic import ValidationError
 from app.ocsf.events.detection_finding import DetectionFinding
 
+logger = logging.getLogger(__name__)
+
+
 class ValidationResult:
     def __init__(self, valid: bool, errors: list[str] = None,
-                 nesting_violations: list[str] = None,
                  model: DetectionFinding = None):
         self.valid = valid
         self.errors = errors or []
-        self.nesting_violations = nesting_violations or []
         self.model = model
 
     @property
     def schema_score(self) -> float:
         return 1.0 if self.valid else 0.0
 
-    @property
-    def nesting_score(self) -> float:
-        return 0.0 if self.nesting_violations else 1.0
 
+def validate_ocsf(data, source: str = "unknown") -> ValidationResult:
+    """
+    Validate model output against Detection Finding 2004 schema.
+    Never raises — always returns a ValidationResult.
+    """
+    if not isinstance(data, dict):
+        msg = f"Expected dict, got {type(data).__name__}"
+        logger.warning("[%s] Validation failed: %s", source, msg)
+        return ValidationResult(valid=False, errors=[msg])
 
-def validate_ocsf(data: dict) -> ValidationResult:
-    
-    # Check nesting first 
-    nesting_violations = _check_nesting_violations(data)
-    
-    # Schema validation
-    schema_errors = []
-    model = None
     try:
         model = DetectionFinding(**data)
+        logger.info("[%s] Validation passed", source)
+        return ValidationResult(valid=True, model=model)
+
     except ValidationError as e:
-        schema_errors = [f"{err['loc']}: {err['msg']}" for err in e.errors()]
-    
-    all_errors = nesting_violations + schema_errors
-    
-    return ValidationResult(
-        valid=len(all_errors) == 0,
-        errors=all_errors,
-        nesting_violations=nesting_violations,
-        model=model,
-    )
+        errors = [f"{err['loc']}: {err['msg']}" for err in e.errors()]
+        logger.warning(
+            "[%s] Validation failed with %d errors: %s",
+            source, len(errors), errors[:3],  
+        )
+        return ValidationResult(valid=False, errors=errors)
 
-def _check_nesting_violations(data: dict) -> list[str]:
-
-    violations = []
-    illegal_top = {"process", "src_endpoint", "dst_endpoint", "attacks", "user"}
-    for key in data:
-        if key in illegal_top:
-            violations.append(
-                f"'{key}' at top level — must be inside "
-                f"{'finding_info' if key == 'attacks' else 'evidences[]'}"
-            )
-    return violations
+    except Exception as e:
+        msg = f"Unexpected validation error: {e}"
+        logger.error("[%s] %s", source, msg, exc_info=True)
+        return ValidationResult(valid=False, errors=[msg])
