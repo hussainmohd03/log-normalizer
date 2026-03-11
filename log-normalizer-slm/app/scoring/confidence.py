@@ -2,7 +2,7 @@ import json
 import logging
 from ocsf.validator import validate_ocsf
 from app.config import settings
-from class_fields.ocsf_fields import (DETECTION_FINDING_RECOMMENDED, DETECTION_FINDING_REQUIRED, DETECTION_FINDING_RICHNESS, COVERAGE_WEIGHTS)
+from ocsf.ocsf_constants import (DETECTION_FINDING_RECOMMENDED, DETECTION_FINDING_REQUIRED, DETECTION_FINDING_RICHNESS, COVERAGE_WEIGHTS)
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def compute_confidence(raw_input: dict, ocsf_output: dict, source: str) -> Confi
 def compute_field_coverage(data: dict) -> float:
     """
     Measure how densely populated the OCSF output is.
-    Uses tiered field lists from ocsf_fields.
+    Uses tiered field lists from ocsf_constants.
     """
     required_score = _tier_score(data, DETECTION_FINDING_REQUIRED)
     recommended_score = _tier_score(data, DETECTION_FINDING_RECOMMENDED)
@@ -141,6 +141,6 @@ def extract_leaf_values(data: dict, max_depth=5) -> list:
             if isinstance(obj, (int, float)) and -100 <= obj <= 100:
                 return
             values.append(obj)
-            
+
     _extract(data)
     return values[:50]  # Cap to avoid slow checks on huge outputs
