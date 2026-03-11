@@ -44,7 +44,7 @@ class DetectionFinding(BaseModel):
     comment: Optional[str] = None
     count: Optional[int] = None
     is_alert: Optional[bool] = None
-    malware: Optional[list[Malware]]
+    malware: Optional[list[Malware]] = None
 
     # Timing
     start_time: Optional[str] = None

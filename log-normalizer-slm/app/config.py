@@ -23,11 +23,10 @@ class Settings(BaseSettings):
     max_new_tokens: int = 2700
 
     # -- Confidence settings --------- 
-    confidence_threshold: float = 0.85
+    accept_threshold: float = 0.85
+    review_threshold: float = 0.60
 
-    # -- RAG settings  ---------
-    chroma_path: str = "./data/chroma"
-    rag_examples_count: int = 2
+
 
     # -- App settings ---------
     log_level: str = "INFO"
