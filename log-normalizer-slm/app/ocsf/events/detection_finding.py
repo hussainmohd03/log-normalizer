@@ -1,12 +1,14 @@
 from pydantic import BaseModel, field_validator
 from typing import Optional
 
+from ocsf.enums import SeverityId, StatusId, RiskLevelId
 from objects.resource_details import ResourceDetails
 from ocsf.objects.finding_info import FindingInfo
 from ocsf.objects.metadata import Metadata
 from objects.observable import Observable
 from objects.enrichment import Enrichment
 from objects.evidence import Evidence
+from objects.malware import Malware
 from objects.device import Device
 class DetectionFinding(BaseModel):
     # Required
@@ -19,7 +21,7 @@ class DetectionFinding(BaseModel):
     type_uid: int
     finding_info: FindingInfo
     metadata: Metadata
-    severity_id: int
+    severity_id: SeverityId
     time: str
 
     # Classification & scoring
@@ -27,12 +29,13 @@ class DetectionFinding(BaseModel):
     confidence_score: Optional[int] = None
     risk_score: Optional[int] = None
     risk_level: Optional[str] = None
-    risk_level_id: Optional[int] = None
+    risk_level_id: Optional[RiskLevelId] = None
     impact_score: Optional[int] = None
+    type_name: Optional[str] = None
 
     # Status
     status: Optional[str] = None
-    status_id: Optional[int] = None
+    status_id: Optional[StatusId] = None
     status_detail: Optional[str] = None
     status_code: Optional[str] = None
 
@@ -41,11 +44,13 @@ class DetectionFinding(BaseModel):
     comment: Optional[str] = None
     count: Optional[int] = None
     is_alert: Optional[bool] = None
+    malware: Optional[list[Malware]]
 
     # Timing
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     duration: Optional[int] = None
+    timezone_offset: Optional[int] = None
 
     # Objects
     device: Optional[Device] = None

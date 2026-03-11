@@ -6,6 +6,7 @@ from objects.location import Location
 from objects.organization import Organization
 from objects.user import User 
 from objects.agent import Agent
+from ocsf.enums import DeviceTypeId
 
 class Device(BaseModel):
     hostname: Optional[str] = None
@@ -15,7 +16,7 @@ class Device(BaseModel):
     uid: Optional[str] = None
     domain: Optional[str] = None
     type: Optional[str] = None
-    type_id: Optional[int] = None
+    type_id: Optional[DeviceTypeId] = None
     os: Optional[OS] = None
     location: Optional[Location] = None
     org: Optional[Organization] = None
