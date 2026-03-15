@@ -26,8 +26,6 @@ class Settings(BaseSettings):
     accept_threshold: float = 0.85
     review_threshold: float = 0.60
 
-
-
     # -- App settings ---------
     log_level: str = "INFO"
 
@@ -40,11 +38,7 @@ class Settings(BaseSettings):
         typo like 2.0 doesn't crash the whole service on startup."""
         return max(0.0, min(1.0, v))
 
-    @field_validator("confidence_threshold")
-    @classmethod
-    def clamp_confidence_threshold(cls, v: float) -> float:
-        """Confidence threshold must be 0.0–1.0."""
-        return max(0.0, min(1.0, v))
+
 
 
 # instance to import 

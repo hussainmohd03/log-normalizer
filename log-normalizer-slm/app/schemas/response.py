@@ -21,8 +21,10 @@ class NormalizeResponse(BaseModel):
     ocsf: dict[str, Any]
     confidence: float
     processing_time_ms: int
+    decision: str
+    breakdown: Optional[dict[str, float]] = None
+    errors: Optional[list[str]] = None
     error: Optional[str] = None
-    rag_examples_used: int = 0
 
     @field_validator("confidence")
     @classmethod

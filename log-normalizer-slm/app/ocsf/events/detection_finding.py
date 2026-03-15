@@ -1,15 +1,16 @@
 from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Optional
 
-from ocsf.enums import SeverityId, StatusId, RiskLevelId
-from objects.resource_details import ResourceDetails
-from ocsf.objects.finding_info import FindingInfo
-from ocsf.objects.metadata import Metadata
-from objects.observable import Observable
-from objects.enrichment import Enrichment
-from objects.evidence import Evidence
-from objects.malware import Malware
-from objects.device import Device
+from app.ocsf.enums import SeverityId, StatusId, RiskLevelId
+from app.ocsf.objects.resource_details import ResourceDetails
+from app.ocsf.objects.finding_info import FindingInfo
+from app.ocsf.objects.metadata import Metadata
+from app.ocsf.objects.observable import Observable
+from app.ocsf.objects.enrichment import Enrichment
+from app.ocsf.objects.evidence import Evidence
+from app.ocsf.objects.malware import Malware
+from app.ocsf.objects.device import Device
+
 class DetectionFinding(BaseModel):
     # Required
     activity_id: int

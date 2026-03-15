@@ -60,3 +60,7 @@ class NormalizeRequest(BaseModel):
         if isinstance(v, str):
             return v.strip().lower()
         return v
+
+
+class ValidateRequest(BaseModel):
+    ocsf: dict
