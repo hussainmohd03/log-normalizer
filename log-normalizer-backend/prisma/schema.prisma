@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum STATUS {
+  PENDING
+  IN_PROGRESS
+  PROCESSED
+}
+
+model RawLog {
+  id           String     @id @default(uuid())
+  source       String
+  format       String?
+  rawContent   Json
+  receivedAt   DateTime   @default(now())
+  processedAt  DateTime?
+  status       STATUS     @default(PENDING)
+  errorMessage String?
+  ocsf         OCSFEvent?
+
+  @@index([source, receivedAt])
+  @@index([status])
+}
+
+model OCSFEvent {
+  id             String   @id @default(uuid())
+  rawLogId       String   @unique
+  rawLog         RawLog   @relation(fields: [rawLogId], references: [id])
+  classUid       Int
+  className      String
+  activityId     Int?
+  activityName   String?
+  severityId     Int?
+  ocsfJson       Json
+  confidence     Float
+  decision       String
+  processingTime Int
+  normalizedAt   DateTime @default(now())
+  publishedToSqs Boolean  @default(false)
+  sqsMessageId   String?
+
+  @@index([classUid, normalizedAt])
+  @@index([confidence])
+  @@index([decision])
+  @@index([publishedToSqs])
+}
+
+model ManualReview {
+  id                  String    @id @default(uuid())
+  rawLogId            String
+  source              String
+  rawContent          String    @db.Text
+  slmOcsfOutput       Json
+  confidence          Float
+  confidenceBreakdown Json?
+  validationErrors    Json?
+  priority            String    @default("normal")
+  queuedAt            DateTime  @default(now())
+  reviewedAt          DateTime?
+  reviewedBy          String?
+  correctedOCSF       Json?
+  exportedForTraining Boolean   @default(false)
+
+  @@index([queuedAt])
+  @@index([reviewedAt])
+  @@index([priority, queuedAt])
+}
+
+model AccumulatedPair {
+  id            String   @id @default(uuid())
+  source        String
+  rawContent    String   @db.Text
+  ocsfOutput    Json
+  confidence    Float
+  accumulatedAt DateTime @default(now())
+
+  @@index([source, accumulatedAt])
+  @@index([confidence])
+}
+
+model ProcessingMetric {
+  id         String   @id @default(uuid())
+  timestamp  DateTime @default(now())
+  source     String
+  confidence Float?
+  latencyMs  Int?
+  decision   String?
+  success    Boolean  @default(true)
+
+  @@index([timestamp, source])
+  @@index([source, timestamp])
+}

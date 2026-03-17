@@ -6,6 +6,7 @@ __pycache__/
 *.pyc
 models/*.bin
 package-lock.json
+generated
 
 # Logs
 logs

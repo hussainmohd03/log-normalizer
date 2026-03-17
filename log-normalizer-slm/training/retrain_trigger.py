@@ -95,15 +95,15 @@ def cmd_export(db_url: str, output: Path, dry_run: bool = False) -> None:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
                 SELECT id, raw_log, source, corrected_ocsf
-                FROM manual_review
-                WHERE reviewed_at IS NOT NULL
-                  AND corrected_ocsf IS NOT NULL
-                  AND exported_for_training = false
+                FROM ManualReview
+                WHERE reviewedAt IS NOT NULL
+                  AND correctedOcsf IS NOT NULL
+                  AND exportedForTraining = false
                 ORDER BY id
             """)
             rows = cur.fetchall()
 
-        print(f"Fetched {len(rows)} reviewed corrections from manual_review table")
+        print(f"Fetched {len(rows)} reviewed corrections from ManualReview table")
 
         if not rows:
             print("No reviewed corrections found. Nothing to export.")
