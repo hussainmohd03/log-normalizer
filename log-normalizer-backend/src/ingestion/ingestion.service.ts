@@ -24,7 +24,6 @@ export class IngestionService {
     const created_alerts = await this.prisma.rawLog.createMany({
       data: dto.alerts.map(alert => ({
         source: dto.source,
-        format: dto.format,
         rawContent: alert
       }))
     }); 

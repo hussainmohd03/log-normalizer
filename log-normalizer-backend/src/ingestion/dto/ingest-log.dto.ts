@@ -9,9 +9,6 @@ export class IngestDto {
   @IsNotEmptyObject()
   rawContent: Record<string, any>
 
-  @IsOptional()
-  @IsString()
-  format?: string
 }
 export class IngestBatchDto {
 
@@ -22,7 +19,5 @@ export class IngestBatchDto {
   @ArrayNotEmpty()
   alerts: Record<string, any>[] 
 
-  @IsOptional()
-  @IsString()
-  format?: string
+
 }
