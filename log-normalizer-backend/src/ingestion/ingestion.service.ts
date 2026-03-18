@@ -1,7 +1,6 @@
 import { ForbiddenException, Injectable } from "@nestjs/common";
 import { IngestBatchDto, IngestDto } from "./dto/ingest-log.dto";
 import { PrismaService } from "src/database/prisma.service";
-import { PrismaClientKnownRequestError } from "generated/prisma/internal/prismaNamespace";
 import { format } from "path";
 
 

@@ -3,6 +3,7 @@ import { IngestionModule } from './ingestion/ingestion.module';
 import { DatabaseModule } from './database/database.module';
 import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health/health.controller';
+import { ApiGuard } from './common/guards/api-key.guard';
 
 @Module({
   imports: [
@@ -11,7 +12,7 @@ import { HealthController } from './health/health.controller';
     DatabaseModule
   ],
   controllers: [HealthController],
-
+  providers: [ApiGuard]
   
 })
 export class AppModule {}

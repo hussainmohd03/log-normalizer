@@ -8,7 +8,7 @@ export class IngestDto {
 
   @IsNotEmptyObject()
   rawContent: Record<string, any>
-
+  
 }
 export class IngestBatchDto {
 
