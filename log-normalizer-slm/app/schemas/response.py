@@ -18,12 +18,12 @@ from pydantic import BaseModel, field_validator
 
 class NormalizeResponse(BaseModel):
 
-    ocsf: dict[str, Any]
+    ocsf: dict[str, Any] | None
     confidence: float
     processing_time_ms: int
     decision: str
     breakdown: Optional[dict[str, float]] = None
-    errors: Optional[list[str]] = None
+    validation_errors: Optional[list[str]] = None
     error: Optional[str] = None
 
     @field_validator("confidence")
