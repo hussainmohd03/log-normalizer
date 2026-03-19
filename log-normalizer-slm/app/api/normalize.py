@@ -30,7 +30,7 @@ def _sync_normalize(req: NormalizeRequest) -> NormalizeResponse:
         if ocsf is None:
             processing_time_ms = int((time.time() - start_time) * 1000)
             return NormalizeResponse(
-                ocsf={},
+                ocsf=ocsf,
                 decision="reject",
                 confidence=0.0,
                 processing_time_ms=processing_time_ms,
@@ -63,14 +63,14 @@ def _sync_normalize(req: NormalizeRequest) -> NormalizeResponse:
             confidence=result.score,
             processing_time_ms=processing_time_ms,
             breakdown=result.breakdown,
-            errors=validation.errors if not validation.valid else None,
+            validation_errors=validation.errors if not validation.valid else None,
         )
 
     except Exception as err:
         processing_time_ms = int((time.time() - start_time) * 1000)
         logger.error("Normalize error: %s", err, exc_info=True)
         return NormalizeResponse(
-            ocsf={},
+            ocsf=None,
             decision="reject",
             confidence=0.0,
             processing_time_ms=processing_time_ms,
