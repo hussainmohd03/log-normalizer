@@ -4,12 +4,14 @@ import { DatabaseModule } from './database/database.module';
 import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health/health.controller';
 import { ApiGuard } from './common/guards/api-key.guard';
+import { NormalizationModule } from './normalization/normalization.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({isGlobal: true}),
     IngestionModule, 
-    DatabaseModule
+    DatabaseModule, 
+    NormalizationModule
   ],
   controllers: [HealthController],
   providers: [ApiGuard]
