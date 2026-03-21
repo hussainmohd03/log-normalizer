@@ -17,7 +17,7 @@ export class IngestionService {
         select: { id: true }
       })
       return {"id": new_alert.id, status: "accepted" }
-    } 
+  } 
 
   async receiveBatch(dto: IngestBatchDto) {
     const created_alerts = await this.prisma.rawLog.createMany({
