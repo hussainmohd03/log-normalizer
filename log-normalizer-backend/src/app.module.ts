@@ -5,13 +5,17 @@ import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health/health.controller';
 import { ApiGuard } from './common/guards/api-key.guard';
 import { NormalizationModule } from './normalization/normalization.module';
+import { RoutingModule } from './routing/routing.module';
+import { DeliveryModule } from './delivery/delivery.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({isGlobal: true}),
     IngestionModule, 
     DatabaseModule, 
-    NormalizationModule
+    NormalizationModule, 
+    RoutingModule, 
+    DeliveryModule
   ],
   controllers: [HealthController],
   providers: [ApiGuard]
