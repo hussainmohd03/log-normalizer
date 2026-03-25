@@ -1,12 +1,12 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from objects.process import Process
-from objects.actor import Actor
-from objects.network_endpoint import NetworkEndpoint
-from objects.net_con_info import NetworkConnectionInfo
-from objects.api import API
-from objects.email import Email
+from app.ocsf.objects.process import Process
+from app.ocsf.objects.actor import Actor
+from app.ocsf.objects.network_endpoint import NetworkEndpoint
+from app.ocsf.objects.net_con_info import NetworkConnectionInfo
+from app.ocsf.objects.api import API
+from app.ocsf.objects.email import Email
 
 class Evidence(BaseModel):
     process: Optional[Process] = None

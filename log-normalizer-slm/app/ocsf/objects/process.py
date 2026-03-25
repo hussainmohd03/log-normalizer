@@ -1,8 +1,8 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from objects.user import User
-from objects.file import File
+from app.ocsf.objects.user import User
+from app.ocsf.objects.file import File
 
 class Process(BaseModel):
     name: Optional[str] = None

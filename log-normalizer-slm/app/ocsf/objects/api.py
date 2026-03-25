@@ -1,9 +1,9 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from objects.service import Service
-from objects.request import Request
-from objects.response import Response
+from app.ocsf.objects.service import Service
+from app.ocsf.objects.request import Request
+from app.ocsf.objects.response import Response
 class API(BaseModel):
     operation: Optional[str] = None
     service: Optional[Service] = None

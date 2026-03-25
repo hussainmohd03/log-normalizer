@@ -1,8 +1,8 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from objects.product import Product
-from ocsf import OCSF_VERSION
+from app.ocsf.objects.product import Product
+from app.ocsf import OCSF_VERSION
 
 class Metadata(BaseModel):
     product: Product

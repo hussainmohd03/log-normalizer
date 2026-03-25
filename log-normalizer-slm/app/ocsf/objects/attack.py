@@ -1,8 +1,8 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from objects.technique import Technique
-from objects.tactic import Tactic
+from app.ocsf.objects.technique import Technique
+from app.ocsf.objects.tactic import Tactic
 
 
 class Attack(BaseModel):

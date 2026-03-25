@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
-from objects.file import File
+from app.ocsf.objects.file import File
 
 class Email(BaseModel):
     from_: Optional[str] = Field(None, alias="from")

@@ -1,8 +1,8 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from objects.user import User
-from objects.process import Process
+from app.ocsf.objects.user import User
+from app.ocsf.objects.process import Process
 
 class Actor(BaseModel):
     user: Optional[User] = None

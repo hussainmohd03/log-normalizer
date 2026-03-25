@@ -5,7 +5,7 @@ from peft import PeftModel
 from pathlib import Path
 
 from typing import Optional
-from .inference import run_inference
+from app.models.inference import run_inference
 from app.config import settings
 
 import logging

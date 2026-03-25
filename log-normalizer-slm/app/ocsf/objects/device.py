@@ -1,12 +1,12 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from objects.os import OS
-from objects.location import Location 
-from objects.organization import Organization
-from objects.user import User 
-from objects.agent import Agent
-from ocsf.enums import DeviceTypeId
+from app.ocsf.objects.os import OS
+from app.ocsf.objects.location import Location 
+from app.ocsf.objects.organization import Organization
+from app.ocsf.objects.user import User 
+from app.ocsf.objects.agent import Agent
+from app.ocsf.enums import DeviceTypeId
 
 class Device(BaseModel):
     hostname: Optional[str] = None

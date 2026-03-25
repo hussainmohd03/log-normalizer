@@ -1,9 +1,9 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from objects.analytics import Analytic
-from objects.attack import Attack
-from objects.product import Product
+from app.ocsf.objects.analytics import Analytic
+from app.ocsf.objects.attack import Attack
+from app.ocsf.objects.product import Product
 class FindingInfo(BaseModel):
     title: str
     uid: str

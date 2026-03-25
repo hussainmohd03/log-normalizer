@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from ocsf.enums import ObservableTypeId
+from app.ocsf.enums import ObservableTypeId
 class Observable(BaseModel):
     name: str
     type: str

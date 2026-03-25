@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
-from ocsf.enums import OSTypeId
+from app.ocsf.enums import OSTypeId
 class OS(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None

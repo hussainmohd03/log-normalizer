@@ -1,8 +1,8 @@
 import json
 import logging
-from ocsf.validator import validate_ocsf
+from app.ocsf.validator import validate_ocsf
 from app.config import settings
-from ocsf.ocsf_constants import (DETECTION_FINDING_RECOMMENDED, DETECTION_FINDING_REQUIRED, DETECTION_FINDING_RICHNESS, COVERAGE_WEIGHTS)
+from app.ocsf.ocsf_constants import (DETECTION_FINDING_RECOMMENDED, DETECTION_FINDING_REQUIRED, DETECTION_FINDING_RICHNESS, COVERAGE_WEIGHTS)
 
 logger = logging.getLogger(__name__)
 

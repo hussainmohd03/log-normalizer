@@ -1,8 +1,8 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from objects.filehash import FileHash
-from ocsf.enums import FileTypeId
+from app.ocsf.objects.filehash import FileHash
+from app.ocsf.enums import FileTypeId
 
 class File(BaseModel):
     name: Optional[str] = None

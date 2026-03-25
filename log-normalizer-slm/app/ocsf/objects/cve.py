@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from ocsf.objects.product import Product
+from app.ocsf.objects.product import Product
 
 class CWE(BaseModel):
     uid: str

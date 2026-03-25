@@ -1,9 +1,9 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-from objects.organization import Organization
-from objects.account import Account
-from ocsf.enums import UserTypeId
+from app.ocsf.objects.organization import Organization
+from app.ocsf.objects.account import Account
+from app.ocsf.enums import UserTypeId
 class User(BaseModel):
     name: Optional[str] = None
     uid: Optional[str] = None
