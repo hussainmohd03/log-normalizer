@@ -1,10 +1,12 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
+import { time } from 'console';
 import { Response } from 'express';
 import { PrismaService } from 'src/database/prisma.service';
+import { SLMClient } from 'src/normalization/client/slm-client.service';
 
 @Controller('health')
 export class HealthController {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private slmClient: SLMClient) {}
 
   @Get()
   async healthCheck(@Res() res: Response){
@@ -20,7 +22,7 @@ export class HealthController {
     // Check SLM State - call /health (later)
     
     // Check Circuit Breaker state (later)
-
+    const breakerState = this.slmClient.isHealthy() ? "Closed" : "Opened"
 
     const status = dbCheck === 'connected' ? 'ok' : 'unhealthy';
     const httpCode = status === 'ok' ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
@@ -28,6 +30,7 @@ export class HealthController {
     return res.status(httpCode).json( {
       status: dbCheck === 'connected' ? 'ok' : "unhealthy", 
       database: dbCheck,
+      breaker: breakerState
     })
   }
 }

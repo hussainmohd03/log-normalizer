@@ -16,6 +16,7 @@ enum STATUS {
   PENDING
   IN_PROGRESS
   PROCESSED
+  FAILED
 }
 
 model RawLog {
