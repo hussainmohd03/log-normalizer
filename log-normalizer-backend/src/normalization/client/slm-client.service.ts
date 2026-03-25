@@ -55,6 +55,11 @@ export class SLMClient implements OnModuleInit{
   isHealthy(){
     return !this.breaker.opened
   }
+
+  async slmHeath() {
+    const {data} = await firstValueFrom(this.httpService.get(`${this.slmUrl}/health`))
+    return data
+  }
 }
 
 
