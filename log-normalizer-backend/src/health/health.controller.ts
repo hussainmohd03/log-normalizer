@@ -19,7 +19,7 @@ export class HealthController {
     }
 
     // Check SLM State - call /health (later)
-    const slmHealth = await this.slmClient.slmHeath()
+    const slmHealth = await this.slmClient.slmHealth()
     // Check Circuit Breaker state (later)
     const breakerState = this.slmClient.isHealthy() ? "Closed" : "Opened"
 
