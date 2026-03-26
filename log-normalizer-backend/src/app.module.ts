@@ -7,6 +7,8 @@ import { ApiGuard } from './common/guards/api-key.guard';
 import { NormalizationModule } from './normalization/normalization.module';
 import { RoutingModule } from './routing/routing.module';
 import { DeliveryModule } from './delivery/delivery.module';
+import { ReviewModule } from './review/review.module';
+import { SLMModule } from './slm/slm.module';
 
 @Module({
   imports: [
@@ -15,7 +17,9 @@ import { DeliveryModule } from './delivery/delivery.module';
     DatabaseModule, 
     NormalizationModule, 
     RoutingModule, 
-    DeliveryModule
+    DeliveryModule, 
+    ReviewModule, 
+    SLMModule
   ],
   controllers: [HealthController],
   providers: [ApiGuard]

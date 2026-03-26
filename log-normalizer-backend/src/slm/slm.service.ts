@@ -6,9 +6,10 @@ import { SLMRequest } from "src/common/interfaces/slm-request.interface";
 import { SLMResponse } from "src/common/interfaces/slm-response.interface";
 import CircuitBreaker from "opossum";
 import { firstValueFrom } from "rxjs";
+import { ValidationResult } from "src/common/interfaces/validation-result.interface";
 
 @Injectable()
-export class SLMClient implements OnModuleInit{
+export class SLMService implements OnModuleInit{
   private readonly logger = new Logger("SLMClient")
   private breaker: CircuitBreaker<[SLMRequest], SLMResponse>
   private readonly slmUrl: string;
@@ -58,6 +59,11 @@ export class SLMClient implements OnModuleInit{
 
   async slmHealth() {
     const {data} = await firstValueFrom(this.httpService.get(`${this.slmUrl}/health`))
+    return data
+  }
+
+  async validate(ocsf: Record<string, any>): Promise<ValidationResult> {
+    const { data } = await firstValueFrom(this.httpService.post(`${this.slmUrl}/api/validate`, { ocsf }))
     return data
   }
 }

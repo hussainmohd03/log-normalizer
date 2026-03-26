@@ -1,11 +1,11 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { PrismaService } from 'src/database/prisma.service';
-import { SLMClient } from 'src/normalization/client/slm-client.service';
+import { SLMService } from 'src/slm/slm.service';
 
 @Controller('health')
 export class HealthController {
-  constructor(private prisma: PrismaService, private slmClient: SLMClient) {}
+  constructor(private prisma: PrismaService, private slmClient: SLMService) {}
 
   @Get()
   async healthCheck(@Res() res: Response){

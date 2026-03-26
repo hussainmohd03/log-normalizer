@@ -20,15 +20,16 @@ enum STATUS {
 }
 
 model RawLog {
-  id           String     @id @default(uuid())
-  source       String
-  format       String?
-  rawContent   Json
-  receivedAt   DateTime   @default(now())
-  processedAt  DateTime?
-  status       STATUS     @default(PENDING)
-  errorMessage String?
-  ocsf         OCSFEvent?
+  id            String         @id @default(uuid())
+  source        String
+  format        String?
+  rawContent    Json
+  receivedAt    DateTime       @default(now())
+  processedAt   DateTime?
+  status        STATUS         @default(PENDING)
+  errorMessage  String?
+  ocsf          OCSFEvent?
+  manualReviews ManualReview[]
 
   @@index([source, receivedAt])
   @@index([status])
@@ -57,16 +58,21 @@ model OCSFEvent {
   @@index([publishedToSqs])
 }
 
+enum PRIORITY {
+  NORMAL
+  HIGH
+}
+
 model ManualReview {
   id                  String    @id @default(uuid())
   rawLogId            String
+  rawLog              RawLog    @relation(fields: [rawLogId], references: [id])
   source              String
-  rawContent          String    @db.Text
   slmOcsfOutput       Json
   confidence          Float
   confidenceBreakdown Json?
   validationErrors    Json?
-  priority            String    @default("normal")
+  priority            PRIORITY  @default(NORMAL)
   queuedAt            DateTime  @default(now())
   reviewedAt          DateTime?
   reviewedBy          String?

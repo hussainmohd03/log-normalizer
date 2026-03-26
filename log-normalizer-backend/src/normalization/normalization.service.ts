@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SLMClient } from './client/slm-client.service';
+import { SLMService } from 'src/slm/slm.service';
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
 import { PrismaService } from 'src/database/prisma.service';
 import { RawLog } from 'generated/prisma/browser';
@@ -7,7 +7,7 @@ import { RawLog } from 'generated/prisma/browser';
 @Injectable()
 export class NormalizationService {
 
-  constructor(private slmClient: SLMClient, private prisma: PrismaService){}
+  constructor(private slmClient: SLMService, private prisma: PrismaService){}
 
   async process(rawLog: RawLog): Promise<SLMResponse | null> {
       try {
