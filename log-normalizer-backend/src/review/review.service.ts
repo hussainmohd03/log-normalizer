@@ -1,15 +1,16 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { error } from 'console';
-import { ManualReview, PRIORITY, RawLog } from 'generated/prisma/browser';
+import { PRIORITY, RawLog } from 'generated/prisma/browser';
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
+import { nonBlocking } from 'src/common/utils/non-blocking';
 import { PrismaService } from 'src/database/prisma.service';
+import { SQSClientService } from 'src/delivery/sqs-client.service';
 import { SLMService } from 'src/slm/slm.service';
 
 @Injectable()
 export class ReviewService {
   private readonly logger = new Logger('ReviewService')
 
-  constructor(private prisma: PrismaService, private slmService: SLMService){}
+  constructor(private prisma: PrismaService, private slmService: SLMService, private SQSClient: SQSClientService){}
 
   async queue(rawLog: RawLog, slmResponse: SLMResponse, priority: PRIORITY) {
 
@@ -62,7 +63,7 @@ export class ReviewService {
       throw new BadRequestException(`Review ${reviewId} already corrected`);
     }
 
-    return await this.prisma.manualReview.update({
+    const updated = await this.prisma.manualReview.update({
       where: { id: reviewId },
       data: {
         correctedOCSF: correctedOcsf,
@@ -71,5 +72,14 @@ export class ReviewService {
       },
     });
 
+    // Publish corrected OCSF to Orryx - nonBlocking
+    // If SQS fails, the correction is still stored - can retry later
+    await nonBlocking(
+      () => this.SQSClient.publish(correctedOcsf),
+      `review/${reviewId}/sqs`,
+      this.logger,
+    );
+
+    return updated;
   }
 }
