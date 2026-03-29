@@ -10,7 +10,7 @@ import { SLMService } from 'src/slm/slm.service';
 export class ReviewService {
   private readonly logger = new Logger('ReviewService')
 
-  constructor(private prisma: PrismaService, private slmService: SLMService, private SQSClient: SQSClientService){}
+  constructor(private prisma: PrismaService, private slmService: SLMService){}
 
   async queue(rawLog: RawLog, slmResponse: SLMResponse, priority: PRIORITY) {
 
@@ -70,15 +70,32 @@ export class ReviewService {
         reviewedBy: reviewer,
         reviewedAt: new Date(),
       },
-    });
+    })
 
-    // Publish corrected OCSF to Orryx - nonBlocking
-    // If SQS fails, the correction is still stored - can retry later
-    await nonBlocking(
-      () => this.SQSClient.publish(correctedOcsf),
-      `review/${reviewId}/sqs`,
-      this.logger,
-    );
+    await this.prisma.oCSFEvent.upsert({
+    where: { rawLogId: updated.rawLogId },
+      update: {
+        ocsfJson: correctedOcsf,
+        confidence: 1.0,
+        decision: 'corrected',
+        publishedToSqs: false,
+        sqsMessageId: null,
+      },
+      create: {
+        rawLogId: updated.rawLogId,
+        classUid: correctedOcsf['class_uid'],
+        className: correctedOcsf['class_name'],
+        activityId: correctedOcsf['activity_id'],
+        activityName: correctedOcsf['activity_name'],
+        severityId: correctedOcsf['severity_id'],
+        ocsfJson: correctedOcsf,
+        confidence: 1.0,
+        decision: 'corrected',
+        processingTime: 0,
+        publishedToSqs: false,
+      },
+    })
+
 
     return updated;
   }
