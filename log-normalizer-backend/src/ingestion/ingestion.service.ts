@@ -19,7 +19,7 @@ export class IngestionService {
     });
 
     // Fire normalization in background 
-    this.normalizationService.process(rawLog).catch(err => {
+    await this.normalizationService.process(rawLog).catch(err => {
       this.logger.error(`[${rawLog.id}] Background normalization failed: ${err.message}`);
     });
 

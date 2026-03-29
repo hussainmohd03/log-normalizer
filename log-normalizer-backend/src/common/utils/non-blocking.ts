@@ -1,7 +1,7 @@
 import { Logger } from "@nestjs/common";
 
 export async function nonBlocking<T>(
-  fn: () => Promise<T>, 
+  fn: () => T | Promise<T>, 
   context: string, 
   logger: Logger): Promise<T | null> 
   {
