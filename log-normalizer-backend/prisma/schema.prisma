@@ -87,7 +87,7 @@ model ManualReview {
 model AccumulatedPair {
   id            String   @id @default(uuid())
   source        String
-  rawContent    String   @db.Text
+  rawContent    Json   
   ocsfOutput    Json
   confidence    Float
   accumulatedAt DateTime @default(now())

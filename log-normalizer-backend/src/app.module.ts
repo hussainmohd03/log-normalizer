@@ -9,6 +9,7 @@ import { RoutingModule } from './routing/routing.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { ReviewModule } from './review/review.module';
 import { SLMModule } from './slm/slm.module';
+import { AccumulatorModule } from './accumulator/accumulator.module';
 
 @Module({
   imports: [
@@ -19,7 +20,8 @@ import { SLMModule } from './slm/slm.module';
     RoutingModule, 
     DeliveryModule, 
     ReviewModule, 
-    SLMModule
+    SLMModule, 
+    AccumulatorModule
   ],
   controllers: [HealthController],
   providers: [ApiGuard]
