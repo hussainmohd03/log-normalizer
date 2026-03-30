@@ -7,10 +7,10 @@ import { NormalizationService } from 'src/normalization/normalization.service';
 import { SLMService } from 'src/slm/slm.service';
 
 @Injectable()
-export class ReprocessService {
+export class ReprocessJob {
   private batchSize: number;
   private running: boolean = false;
-  private readonly logger = new Logger(ReprocessService.name)
+  private readonly logger = new Logger(ReprocessJob.name)
 
 
   constructor(
@@ -19,7 +19,7 @@ export class ReprocessService {
     private normalizationService: NormalizationService, 
     private config: ConfigService) {
       
-      this.batchSize = parseInt(this.config.get("BATCH_SIZE")!) || 10 
+      this.batchSize = parseInt(this.config.get("PENDING_BATCH_SIZE")!) || 10 
 
     }
 
@@ -59,6 +59,7 @@ export class ReprocessService {
               where: { id: { in: remaining.map(log => log.id) } },
               data: { status: STATUS.PENDING }
             })
+
             this.logger.warn('Circuit opened - returned remaining logs to PENDING')
             break
           }
@@ -68,7 +69,6 @@ export class ReprocessService {
 
       } catch (error) {
         this.logger.error(`Reprocess job failed: ${error.message}`)
-        return null
       }finally{
         this.running = false
       }

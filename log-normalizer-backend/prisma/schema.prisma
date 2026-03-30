@@ -35,6 +35,12 @@ model RawLog {
   @@index([status])
 }
 
+enum DECISION {
+  ACCEPT
+  REVIEW
+  REJECT
+  CORRECTED
+}
 model OCSFEvent {
   id             String   @id @default(uuid())
   rawLogId       String   @unique
@@ -46,7 +52,7 @@ model OCSFEvent {
   severityId     Int?
   ocsfJson       Json
   confidence     Float
-  decision       String
+  decision       DECISION
   processingTime Int
   normalizedAt   DateTime @default(now())
   publishedToSqs Boolean  @default(false)
@@ -102,7 +108,7 @@ model ProcessingMetric {
   source     String
   confidence Float?
   latencyMs  Int?
-  decision   String?
+  decision   DECISION?
   success    Boolean  @default(true)
 
   @@index([timestamp, source])

@@ -10,7 +10,7 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { ReviewModule } from './review/review.module';
 import { SLMModule } from './slm/slm.module';
 import { AccumulatorModule } from './accumulator/accumulator.module';
-import { ReprocessModule } from './reprocess/reprocess.module';
+import { JobsModule } from './jobs/jobs.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({

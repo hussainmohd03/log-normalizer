@@ -4,7 +4,7 @@ import { PrismaService } from 'src/database/prisma.service';
 import { SQSClientService } from 'src/delivery/sqs-client.service';
 import { ReviewService } from 'src/review/review.service';
 import { nonBlocking } from 'src/common/utils/non-blocking';
-import { PRIORITY, RawLog, STATUS } from 'generated/prisma/browser';
+import { DECISION, PRIORITY, RawLog, STATUS } from 'generated/prisma/browser';
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
 
 @Injectable()
@@ -91,7 +91,7 @@ export class RoutingService {
             severityId: slmResponse.ocsf['severity_id'],
             ocsfJson: slmResponse.ocsf,
             confidence: slmResponse.confidence,
-            decision: slmResponse.decision,
+            decision: this.mapDecision(slmResponse.decision),
             processingTime: slmResponse.processing_time_ms,
           },
         }),
@@ -103,7 +103,7 @@ export class RoutingService {
         data: {
           source: rawLog.source,
           confidence: slmResponse.confidence,
-          decision: slmResponse.decision,
+          decision: this.mapDecision(slmResponse.decision),
           latencyMs: slmResponse.processing_time_ms,
           success: slmResponse.decision === 'accept',
         },
@@ -124,4 +124,12 @@ export class RoutingService {
     await this.prisma.$transaction(ops);
   }
   
+  private mapDecision(decision: string): DECISION {
+  const map: Record<string, DECISION> = {
+    'accept': DECISION.ACCEPT,
+    'review': DECISION.REVIEW,
+    'reject': DECISION.REJECT,
+  };
+  return map[decision] || DECISION.REJECT;
+}
 }
