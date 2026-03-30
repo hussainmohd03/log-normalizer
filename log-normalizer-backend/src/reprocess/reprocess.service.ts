@@ -18,8 +18,8 @@ export class ReprocessService {
     private SLMClient: SLMService, 
     private normalizationService: NormalizationService, 
     private config: ConfigService) {
-
-      this.batchSize = this.config.get("BATCH_SIZE") || 10 
+      
+      this.batchSize = parseInt(this.config.get("BATCH_SIZE")!) || 10 
 
     }
 
@@ -64,7 +64,6 @@ export class ReprocessService {
           }
 
           await this.normalizationService.process(log)
-          await this.sleep(2000)
         }
 
       } catch (error) {
@@ -73,9 +72,5 @@ export class ReprocessService {
       }finally{
         this.running = false
       }
-    }
-
-    private sleep(ms: number){
-      return new Promise (resolve => setTimeout(resolve, ms))
     }
 }
