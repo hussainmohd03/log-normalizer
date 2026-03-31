@@ -3,7 +3,6 @@ import { IngestionModule } from './ingestion/ingestion.module';
 import { DatabaseModule } from './database/database.module';
 import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health/health.controller';
-import { ApiGuard } from './common/guards/api-key.guard';
 import { NormalizationModule } from './normalization/normalization.module';
 import { RoutingModule } from './routing/routing.module';
 import { DeliveryModule } from './delivery/delivery.module';
@@ -12,11 +11,17 @@ import { SLMModule } from './slm/slm.module';
 import { AccumulatorModule } from './accumulator/accumulator.module';
 import { JobsModule } from './jobs/jobs.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { MetricsModule } from './metrics/metrics.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
     ConfigModule.forRoot({isGlobal: true}),
+    ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60000, limit: 1000 }],  // 1000 requests per 60 seconds
+    }),
     IngestionModule, 
     DatabaseModule, 
     NormalizationModule, 
@@ -24,11 +29,13 @@ import { ScheduleModule } from '@nestjs/schedule';
     DeliveryModule, 
     ReviewModule, 
     SLMModule, 
-    AccumulatorModule, 
+    AccumulatorModule, MetricsModule, 
     // JobsModule
   ],
   controllers: [HealthController],
-  providers: [ApiGuard]
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard }
+  ],
   
 })
 export class AppModule {}

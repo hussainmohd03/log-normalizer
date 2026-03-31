@@ -10,8 +10,8 @@ export class ReviewController {
   
   
   @Get('pending')
-  getPending(@Query('limit') limit?: string) {
-    return this.reviewService.getPending(limit ? parseInt(limit) : 20);
+  async getPending(@Query('limit') limit?: string) {
+    return await this.reviewService.getPending(limit ? parseInt(limit) : 20);
   }
 
   @Post(':id/correct')

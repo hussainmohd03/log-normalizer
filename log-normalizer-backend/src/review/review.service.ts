@@ -1,9 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DECISION, PRIORITY, RawLog } from 'generated/prisma/browser';
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
-import { nonBlocking } from 'src/common/utils/non-blocking';
 import { PrismaService } from 'src/database/prisma.service';
-import { SQSClientService } from 'src/delivery/sqs-client.service';
 import { SLMService } from 'src/slm/slm.service';
 
 @Injectable()
@@ -30,7 +28,7 @@ export class ReviewService {
   }
   
   async getPending(limit: number = 20) {
-    return this.prisma.manualReview.findMany({
+    return await this.prisma.manualReview.findMany({
       where: { reviewedAt: null },
       orderBy: [
         { priority: 'desc' },      // HIGH before NORMAL
