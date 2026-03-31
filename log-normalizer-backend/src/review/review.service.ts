@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PRIORITY, RawLog } from 'generated/prisma/browser';
+import { DECISION, PRIORITY, RawLog } from 'generated/prisma/browser';
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
 import { nonBlocking } from 'src/common/utils/non-blocking';
 import { PrismaService } from 'src/database/prisma.service';
@@ -77,7 +77,7 @@ export class ReviewService {
       update: {
         ocsfJson: correctedOcsf,
         confidence: 1.0,
-        decision: 'corrected',
+        decision: DECISION.CORRECTED,
         publishedToSqs: false,
         sqsMessageId: null,
       },
@@ -90,7 +90,7 @@ export class ReviewService {
         severityId: correctedOcsf['severity_id'],
         ocsfJson: correctedOcsf,
         confidence: 1.0,
-        decision: 'corrected',
+        decision: DECISION.CORRECTED,
         processingTime: 0,
         publishedToSqs: false,
       },

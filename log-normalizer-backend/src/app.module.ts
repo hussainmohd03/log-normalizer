@@ -25,7 +25,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ReviewModule, 
     SLMModule, 
     AccumulatorModule, 
-    // ReprocessModule
+    // JobsModule
   ],
   controllers: [HealthController],
   providers: [ApiGuard]

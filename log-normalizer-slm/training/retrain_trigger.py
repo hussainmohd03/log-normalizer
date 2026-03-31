@@ -42,11 +42,12 @@ def _user_message(source: str, raw_log: str) -> str:
     return f"Normalize this {source} security alert to OCSF Detection Finding format.\n\n{raw_log}"
 
 
-def _to_chat_example(source: str, raw_log: str, corrected_ocsf: dict) -> dict:
+def _to_chat_example(source: str, raw_log, corrected_ocsf: dict) -> dict:
+    raw_str = json.dumps(raw_log, ensure_ascii=False) if isinstance(raw_log, dict) else raw_log
     return {
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _user_message(source, raw_log)},
+            {"role": "user", "content": _user_message(source, raw_str)},
             {"role": "assistant", "content": json.dumps(corrected_ocsf, ensure_ascii=False)},
         ]
     }
@@ -94,12 +95,14 @@ def cmd_export(db_url: str, output: Path, dry_run: bool = False) -> None:
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT id, raw_log, source, corrected_ocsf
-                FROM ManualReview
-                WHERE reviewedAt IS NOT NULL
-                  AND correctedOcsf IS NOT NULL
-                  AND exportedForTraining = false
-                ORDER BY id
+                SELECT mr.id, mr.source, mr."correctedOCSF",
+                    rl."rawContent"
+                FROM "ManualReview" mr
+                JOIN "RawLog" rl ON mr."rawLogId" = rl.id
+                WHERE mr."reviewedAt" IS NOT NULL
+                AND mr."correctedOCSF" IS NOT NULL
+                AND mr."exportedForTraining" = false
+                ORDER BY mr.id
             """)
             rows = cur.fetchall()
 
@@ -110,13 +113,14 @@ def cmd_export(db_url: str, output: Path, dry_run: bool = False) -> None:
             sys.exit(0)
 
         examples = []
+        exported_ids = []
         skipped = 0
 
         for row in rows:
             row_id = row["id"]
-            raw_log = row["raw_log"]
+            raw_log = row["rawContent"]       
             source = row["source"]
-            corrected = row["corrected_ocsf"]
+            corrected = row["correctedOCSF"]
 
             if isinstance(corrected, str):
                 try:
@@ -137,22 +141,22 @@ def cmd_export(db_url: str, output: Path, dry_run: bool = False) -> None:
                 continue
 
             examples.append(_to_chat_example(source, raw_log, corrected))
+            exported_ids.append(row_id)
 
         print(f"Converted {len(examples)} corrections ({skipped} skipped)")
         _write_jsonl(output, examples)
         print(f"Written to: {output}")
 
-        if examples and not dry_run:
-            ids = [row["id"] for row in rows if row["id"]]
+        if exported_ids and not dry_run:
             with conn.cursor() as cur:
                 cur.execute(
-                    'UPDATE "manual_review" SET "exported_for_training" = true WHERE id = ANY(%s)',
-                    (ids,)
+                    'UPDATE "ManualReview" SET "exportedForTraining" = true WHERE id = ANY(%s)',
+                    (exported_ids,)
                 )
             conn.commit()
-            print(f"Marked {len(ids)} corrections as exported_for_training=true")
-        elif examples and dry_run:
-            print(f"[DRY RUN] Skipped marking {len(examples)} corrections as exported for training.")
+            print(f"Marked {len(exported_ids)} corrections as exportedForTraining=true")
+        elif exported_ids and dry_run:
+            print(f"[DRY RUN] Skipped marking {len(exported_ids)} corrections as exported for training.")
     finally:
         conn.close()
 
