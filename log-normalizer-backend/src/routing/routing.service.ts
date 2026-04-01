@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AccumulatorService } from 'src/accumulator/accumulator.service';
 import { PrismaService } from 'src/database/prisma.service';
 import { SQSClientService } from 'src/delivery/sqs-client.service';
 import { ReviewService } from 'src/review/review.service';
@@ -14,8 +13,7 @@ export class RoutingService {
   constructor(
     private prisma: PrismaService, 
     private reviewService: ReviewService, 
-    private SQSClient: SQSClientService, 
-    private accumulatorService: AccumulatorService) {}
+    private SQSClient: SQSClientService) {}
   
 
   async route(rawLog: RawLog, slmResponse: SLMResponse) {
@@ -58,17 +56,6 @@ export class RoutingService {
         this.logger
       )
     }
-
-    await nonBlocking(
-      () => this.accumulatorService.buffer(
-        rawLog.source,
-        rawLog.rawContent as Record<string, any>,
-        slmResponse.ocsf!,
-        slmResponse.confidence
-      ),
-      `${rawLog.source}/accumulate`,
-      this.logger
-    )
   }
 
   private async handleReview(rawLog: RawLog, slmResponse: SLMResponse, priority: PRIORITY){

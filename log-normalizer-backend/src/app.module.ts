@@ -8,7 +8,6 @@ import { RoutingModule } from './routing/routing.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { ReviewModule } from './review/review.module';
 import { SLMModule } from './slm/slm.module';
-import { AccumulatorModule } from './accumulator/accumulator.module';
 import { JobsModule } from './jobs/jobs.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MetricsModule } from './metrics/metrics.module';
@@ -29,7 +28,7 @@ import { APP_GUARD } from '@nestjs/core';
     DeliveryModule, 
     ReviewModule, 
     SLMModule, 
-    AccumulatorModule, MetricsModule, 
+    MetricsModule, 
     // JobsModule
   ],
   controllers: [HealthController],

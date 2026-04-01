@@ -90,18 +90,6 @@ model ManualReview {
   @@index([priority, queuedAt])
 }
 
-model AccumulatedPair {
-  id            String   @id @default(uuid())
-  source        String
-  rawContent    Json   
-  ocsfOutput    Json
-  confidence    Float
-  accumulatedAt DateTime @default(now())
-
-  @@index([source, accumulatedAt])
-  @@index([confidence])
-}
-
 model ProcessingMetric {
   id         String   @id @default(uuid())
   timestamp  DateTime @default(now())
