@@ -26,6 +26,12 @@ log-normalizer-slm/app/models/foundation-sec-finetuned/*
 # OS
 .DS_Store
 .claude
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.vscode/extensions.jso
 
 # Tests
 coverage
