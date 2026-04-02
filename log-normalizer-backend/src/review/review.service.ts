@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { DECISION, PRIORITY, RawLog } from 'generated/prisma/browser';
+import { DECISION, PRIORITY, RawLog, STATUS } from 'generated/prisma/browser';
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
 import { PrismaService } from 'src/database/prisma.service';
 import { SLMService } from 'src/slm/slm.service';
@@ -91,6 +91,14 @@ export class ReviewService {
         decision: DECISION.CORRECTED,
         processingTime: 0,
         publishedToSqs: false,
+      },
+    })
+
+    await this.prisma.rawLog.update({
+      where: { id: updated.rawLogId },
+      data: { 
+        status: STATUS.PROCESSED, 
+        processedAt: new Date() 
       },
     })
 

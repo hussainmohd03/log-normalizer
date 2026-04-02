@@ -1,11 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { PRIORITY, STATUS } from 'generated/prisma/enums';
-import { PrismaService } from 'src/database/prisma.service';
-import { SQSClientService } from 'src/delivery/sqs-client.service';
-import { ReviewService } from 'src/review/review.service';
-import { RoutingService } from 'src/routing/routing.service';
-import { buildRawLog, buildSLMResponse } from 'test/factories';
-import { cleanDatabase } from 'test/helper/prisma-test';
+import { ConfigModule } from '@nestjs/config'
+import { Test, TestingModule } from '@nestjs/testing'
+import { PRIORITY, STATUS } from 'generated/prisma/enums'
+import { PrismaService } from 'src/database/prisma.service'
+import { SQSClientService } from 'src/delivery/sqs-client.service'
+import { ReviewService } from 'src/review/review.service'
+import { RoutingService } from 'src/routing/routing.service'
+import { buildRawLog, buildSLMResponse } from 'test/factories'
+import { cleanDatabase } from 'test/helper/prisma-test'
 
 describe('RoutingService', () => {
   let routingService: RoutingService
@@ -18,6 +19,7 @@ describe('RoutingService', () => {
     mockReview = { queue: jest.fn() }
 
     const module = await Test.createTestingModule({
+      imports: [ConfigModule.forRoot()],
       providers: [
         RoutingService,
         PrismaService,

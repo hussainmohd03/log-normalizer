@@ -33,3 +33,22 @@ export function buildSLMResponse(overrides: Partial<SLMResponse> = {}): SLMRespo
     ...overrides,
   }
 }
+
+export function buildCorrectedOcsf(overrides = {}): Record<string, any> {
+  return {
+    class_uid: 2004,
+    class_name: 'Detection Finding',
+    activity_id: 1,
+    activity_name: 'Create',
+    type_uid: 200401,
+    type_name: 'Detection Finding: Create',
+    category_uid: 2,
+    category_name: 'Findings',
+    severity_id: 4,
+    severity: 'High',
+    time: new Date().toISOString(),
+    finding_info: { title: 'Corrected Alert', uid: 'corrected-uid-123' },
+    metadata: { product: { name: 'Falcon', vendor_name: 'CrowdStrike' }, version: '1.1.0' },
+    ...overrides,
+  };
+}
