@@ -1,10 +1,10 @@
-import './App.css'
+import Layout from "./components/Layout"
 
-const App = () => {
+const App = () =>  {
 
   return (
     <>
-      
+      <Layout></Layout>
     </>
   )
 }
