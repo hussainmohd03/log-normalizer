@@ -7,4 +7,4 @@ class Analytic(BaseModel):
     type_id: Optional[int] = None
     uid: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

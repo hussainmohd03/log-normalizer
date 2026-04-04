@@ -8,20 +8,20 @@ class CWE(BaseModel):
     caption: Optional[str] = None
     src_url: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
 class CVSSScore(BaseModel):
     version: Optional[str] = None
     base_score: Optional[float] = None
     severity: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
 class EPSS(BaseModel):
     score: Optional[float] = None
     percentile: Optional[float] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
 class CVE(BaseModel):
     uid: str
@@ -36,4 +36,4 @@ class CVE(BaseModel):
     references: Optional[list[str]] = None
     related_cwes: Optional[list[CWE]] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

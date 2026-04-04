@@ -6,4 +6,4 @@ class Observable(BaseModel):
     type_id: ObservableTypeId
     value: str
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

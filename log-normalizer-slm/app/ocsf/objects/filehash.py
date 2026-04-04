@@ -5,4 +5,4 @@ class FileHash(BaseModel):
     algorithm_id: HashAlgorithmId     # 1=MD5, 2=SHA-1, 3=SHA-256
     value: str
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

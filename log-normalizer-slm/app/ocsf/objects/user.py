@@ -13,4 +13,4 @@ class User(BaseModel):
     account: Optional[Account] = None
     org: Optional[Organization] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

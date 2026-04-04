@@ -14,4 +14,4 @@ class Process(BaseModel):
     user: Optional[User] = None
     parent_process: Optional["Process"] = None  # recursive
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

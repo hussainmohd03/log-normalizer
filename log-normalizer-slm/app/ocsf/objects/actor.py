@@ -8,4 +8,4 @@ class Actor(BaseModel):
     user: Optional[User] = None
     process: Optional[Process] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

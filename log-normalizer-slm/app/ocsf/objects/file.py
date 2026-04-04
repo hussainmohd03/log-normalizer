@@ -12,4 +12,4 @@ class File(BaseModel):
     type_id: Optional[FileTypeId] = None
     size: Optional[int] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

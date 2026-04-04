@@ -7,4 +7,4 @@ class OS(BaseModel):
     type_id: Optional[OSTypeId] = None
     version: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

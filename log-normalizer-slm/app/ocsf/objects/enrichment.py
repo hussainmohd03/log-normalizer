@@ -9,4 +9,4 @@ class Enrichment(BaseModel):
     data: Optional[dict] = None
     desc: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

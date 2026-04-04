@@ -8,4 +8,4 @@ class Response(BaseModel):
     error_message: Optional[str] = None
     code: Optional[int] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

@@ -10,4 +10,4 @@ class API(BaseModel):
     request: Optional[Request] = None
     response: Optional[Response] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

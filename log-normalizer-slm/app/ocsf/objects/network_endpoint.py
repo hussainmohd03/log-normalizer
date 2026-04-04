@@ -10,4 +10,4 @@ class NetworkEndpoint(BaseModel):
     uid: Optional[str] = None
     name: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

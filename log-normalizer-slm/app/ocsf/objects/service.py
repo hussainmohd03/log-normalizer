@@ -5,4 +5,4 @@ class Service(BaseModel):
     name: Optional[str] = None
     uid: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

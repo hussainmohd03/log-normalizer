@@ -10,4 +10,4 @@ class Email(BaseModel):
     uid: Optional[str] = None
     files: Optional[list[File]] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

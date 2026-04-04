@@ -37,11 +37,9 @@ def _sync_normalize(req: NormalizeRequest) -> NormalizeResponse:
                 error="JSON extraction failed",
             )
 
-        # Validate and get clean Pydantic-serialized output [P8]
         validation = validate_ocsf(ocsf, source=req.source)
-        clean_ocsf = validation.model.model_dump(exclude_none=True) if validation.model else ocsf
+        clean_ocsf = validation.cleaned if validation.valid else ocsf
 
-        # Parse raw_log to dict for consistency scoring
         try:
             raw_dict = json.loads(req.raw_log)
             if not isinstance(raw_dict, dict):
@@ -49,7 +47,12 @@ def _sync_normalize(req: NormalizeRequest) -> NormalizeResponse:
         except (json.JSONDecodeError, ValueError):
             raw_dict = {"raw": req.raw_log}
 
-        result = compute_confidence(raw_dict, clean_ocsf, req.source)
+        
+        result = compute_confidence(
+            raw_dict, clean_ocsf, req.source,
+            validation_errors=validation.errors,
+            validation_warnings=validation.warnings,
+        )
         processing_time_ms = int((time.time() - start_time) * 1000)
 
         logger.info(
@@ -63,7 +66,7 @@ def _sync_normalize(req: NormalizeRequest) -> NormalizeResponse:
             confidence=result.score,
             processing_time_ms=processing_time_ms,
             breakdown=result.breakdown,
-            validation_errors=validation.errors if not validation.valid else None,
+            validation_errors=result.validation_errors if result.validation_errors else None,
         )
 
     except Exception as err:

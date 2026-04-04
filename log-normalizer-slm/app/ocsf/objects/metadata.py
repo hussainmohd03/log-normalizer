@@ -14,4 +14,4 @@ class Metadata(BaseModel):
     original_time: Optional[str] = None
     log_format: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

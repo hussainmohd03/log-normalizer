@@ -18,4 +18,4 @@ class Evidence(BaseModel):
     email: Optional[Email] = None
     data: Optional[dict] = None
 
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)

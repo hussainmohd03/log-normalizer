@@ -12,4 +12,4 @@ class ResourceDetails(BaseModel):
     type: Optional[str] = None
     data: Optional[dict] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

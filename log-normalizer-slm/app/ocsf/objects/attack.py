@@ -10,4 +10,4 @@ class Attack(BaseModel):
     technique: Optional[Technique] = None
     sub_technique: Optional[Technique] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

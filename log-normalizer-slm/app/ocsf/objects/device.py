@@ -23,4 +23,4 @@ class Device(BaseModel):
     owner: Optional[User] = None
     agent: Optional[list[Agent]] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

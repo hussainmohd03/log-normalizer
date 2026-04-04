@@ -7,4 +7,4 @@ class Location(BaseModel):
     lat: Optional[float] = None
     long: Optional[float] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

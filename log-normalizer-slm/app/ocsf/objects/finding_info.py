@@ -20,4 +20,4 @@ class FindingInfo(BaseModel):
     attacks: Optional[list[Attack]] = None
     product: Optional[Product] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

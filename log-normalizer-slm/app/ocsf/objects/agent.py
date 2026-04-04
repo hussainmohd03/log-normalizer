@@ -7,4 +7,4 @@ class Agent(BaseModel):
     version: Optional[str] = None
     type: Optional[str] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")

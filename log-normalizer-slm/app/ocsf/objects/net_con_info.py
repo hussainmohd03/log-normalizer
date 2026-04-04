@@ -7,4 +7,4 @@ class NetworkConnectionInfo(BaseModel):
     direction: Optional[str] = None
     direction_id: Optional[NetworkDirectionId] = None
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
