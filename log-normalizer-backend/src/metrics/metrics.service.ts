@@ -1,40 +1,66 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/database/prisma.service';
+import { Injectable } from '@nestjs/common'
+import { PrismaService } from 'src/database/prisma.service'
 
 @Injectable()
 export class MetricsService {
 
   constructor(private prisma: PrismaService){}
 
-  async overview(){
-
+  async overview() {
     const [metrics, successCount] = await Promise.all([
-        this.prisma.processingMetric.aggregate({
-          _count: { id: true },
-          _avg: {
-            latencyMs: true,
-            confidence: true,
-          },
-        }),
+      this.prisma.processingMetric.aggregate({
+        _count: { id: true },
+        _avg: { latencyMs: true, confidence: true },
+      }),
+      this.prisma.processingMetric.count({ where: { success: true } }),
+    ])
 
-        this.prisma.processingMetric.count({
-          where: { success: true },
-        }),
-      ]);
+    const total = metrics._count.id
 
-      const total = metrics._count.id;
+    return {
+      totalLogs: total,
+      avgConfidence: metrics._avg.confidence ?? 0,
+      avgLatencyMs: metrics._avg.latencyMs ?? 0,
+      successRate: total > 0 ? (successCount / total) * 100 : 0,
+      reviewRate: total > 0
+        ? ((total - successCount) / total) * 100
+        : 0,
+    }
+  }
 
-      return {
-        totalLogs: total, 
-        avgConfidence: metrics._avg.confidence,
-        avgLatency: metrics._avg.latencyMs,
-        avgSuccess: total > 0 ? successCount / total : 0,
-      }
+  async bySource() {
+    const raw = await this.prisma.processingMetric.groupBy({
+      by: ['source'],
+      _count: { id: true },
+      _avg: { confidence: true, latencyMs: true },
+    })
+
+    return raw.map((r) => ({
+      source: r.source,
+      count: r._count.id,
+      avgConfidence: r._avg.confidence ?? 0,
+      avgLatencyMs: r._avg.latencyMs ?? 0,
+    }))
+  }
+
+  async byDecision() {
+    const raw = await this.prisma.processingMetric.groupBy({
+      by: ['decision'],
+      _count: { id: true },
+    })
+
+    const total = raw.reduce((sum, r) => sum + r._count.id, 0)
+
+    return raw.map((r) => ({
+      decision: r.decision,
+      count: r._count.id,
+      percentage: total > 0 ? (r._count.id / total) * 100 : 0,
+    }))
   }
 
   async timeline(days: number) {
-    return await this.prisma.$queryRaw`
-      SELECT 
+    const rows = await this.prisma.$queryRaw`
+      SELECT
         date_trunc('hour', timestamp) as bucket,
         COUNT(*)::int as count,
         AVG(confidence)::float as avg_confidence,
@@ -43,31 +69,14 @@ export class MetricsService {
       WHERE timestamp > NOW() - ${days}::int * INTERVAL '1 day'
       GROUP BY bucket
       ORDER BY bucket ASC
-      `
-  }
+    `
 
-  async bySource(){
-    
-    const vendorMetrics = await this.prisma.processingMetric.groupBy({
-      by: ['source'],
-      _count: { id: true },
-      _avg: {
-        confidence: true,
-        latencyMs: true
-      }
-    })
-
-    return vendorMetrics
-  }
-
-  async byDecision(){
-    
-    const decisionMetrics = await this.prisma.processingMetric.groupBy({
-      by: ['decision'],
-      _count: { id: true }
-    })
-
-    return decisionMetrics
+    return (rows as any[]).map((r) => ({
+      timestamp: r.bucket,
+      count: r.count,
+      avgConfidence: r.avg_confidence ?? 0,
+      avgLatencyMs: r.avg_latency ?? 0,
+    }))
   }
 
   async reviewQueue() {
@@ -81,14 +90,14 @@ export class MetricsService {
         orderBy: { queuedAt: 'asc' },
         select: { queuedAt: true },
       }),
-    ]);
+    ])
 
     return {
       pendingCount: count,
       oldestQueuedAt: oldest?.queuedAt || null,
-      oldestAgeMinutes: oldest
+      oldestMinutes: oldest
         ? Math.floor((Date.now() - oldest.queuedAt.getTime()) / 60_000)
         : 0,
-    };
-}
+    }
+  }
 }
