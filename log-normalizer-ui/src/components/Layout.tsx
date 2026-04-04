@@ -19,7 +19,7 @@ const Layout = ({ activePage, onNavigate, children }: LayoutProps) => (
       <div className="sidebar-brand">
         <div className="sidebar-logo">L</div>
         <div>
-          <div className="sidebar-brand-name">LogNormalizer</div>
+          <div className="sidebar-brand-name">Log Normalizer</div>
           <div className="sidebar-brand-sub">Beyon Cyber</div>
         </div>
       </div>
