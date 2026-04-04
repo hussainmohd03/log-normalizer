@@ -22,7 +22,7 @@ _REQUIRED_NESTED = {
 
 class ConfidenceResult:
     def __init__(self, score: float, breakdown: dict, decision: str,
-                 validation_errors: list[str] = None):
+                 validation_errors: list[str] | None = None):
         self.score = score
         self.breakdown = breakdown
         self.decision = decision
@@ -33,8 +33,8 @@ def compute_confidence(
     raw_input: dict,
     ocsf_output: dict,
     source: str,
-    validation_errors: list[str] = None,
-    validation_warnings: list[str] = None,
+    validation_errors: list[str] | None = None,
+    validation_warnings: list[str] | None = None,
 ) -> ConfidenceResult:
     """
     Composite score from three signals:

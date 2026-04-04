@@ -6,9 +6,9 @@ logger = logging.getLogger(__name__)
 
 
 class ValidationResult:
-    def __init__(self, valid: bool, errors: list[str] = None,
-                 warnings: list[str] = None, model: DetectionFinding = None,
-                 cleaned: dict = None):
+    def __init__(self, valid: bool, errors: list[str] | None = None,
+                 warnings: list[str] | None= None, model: DetectionFinding | None= None,
+                 cleaned: dict | None = None):
         self.valid = valid
         self.errors = errors or []
         self.warnings = warnings or []
