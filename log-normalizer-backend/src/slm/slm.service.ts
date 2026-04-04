@@ -11,7 +11,7 @@ import { ValidationResult } from "src/common/interfaces/validation-result.interf
 @Injectable()
 export class SLMService implements OnModuleInit{
   private readonly logger = new Logger("SLMClient")
-  private breaker: CircuitBreaker<[SLMRequest], SLMResponse>
+  private breaker!: CircuitBreaker<[SLMRequest], SLMResponse>
   private readonly slmUrl: string;
 
 
@@ -25,10 +25,10 @@ export class SLMService implements OnModuleInit{
     this.breaker = new CircuitBreaker(
       (payload: SLMRequest) => this.callSLM(payload),
       {
-        timeout: 15000,                  // 15s request timeout
-        errorThresholdPercentage: 50,    // open after 50% failures
-        resetTimeout: 60000,             // try again after 60s
-        volumeThreshold: 5,              // need 5 requests before opening
+        timeout: this.config.get('TIMEOUT'),                  // 15s request timeout
+        errorThresholdPercentage: this.config.get('ERROR_THRESHOLD_PERCENTAGE'),    // open after 50% failures
+        resetTimeout: this.config.get('RESET_TIMEOUT'),             // try again after 60s
+        volumeThreshold: this.config.get('VOLUME_THRESHOLD'),              // need 5 requests before opening
       },
     );
 
