@@ -6,6 +6,6 @@ import { DeliveryModule } from 'src/delivery/delivery.module';
 
 @Module({
   imports: [NormalizationModule, DeliveryModule],
-  providers: [ReprocessJob, SQSRetryJob]
+  providers: [ReprocessJob, SQSRetryJob],
 })
 export class JobsModule {}

@@ -6,11 +6,12 @@ import { RoutingService } from 'src/routing/routing.service';
 
 @Injectable()
 export class NormalizationService {
-  private readonly logger = new Logger(NormalizationService.name)
-  
+  private readonly logger = new Logger(NormalizationService.name);
+
   constructor(
-  private slmClient: SLMService, 
-  private routingService: RoutingService){}
+    private slmClient: SLMService,
+    private routingService: RoutingService,
+  ) {}
 
   async process(rawLog: RawLog): Promise<SLMResponse | null> {
     try {
@@ -26,10 +27,11 @@ export class NormalizationService {
       return response;
     } catch (error) {
       // SLM call failed entirely (timeout, circuit open)
-      // Log stays as PENDING - reprocess job picks it up 
-      this.logger.error(`[${rawLog.id}] Normalization failed: ${error.message}`);
+      // Log stays as PENDING - reprocess job picks it up
+      this.logger.error(
+        `[${rawLog.id}] Normalization failed: ${error.message}`,
+      );
       return null;
     }
-    
   }
 }

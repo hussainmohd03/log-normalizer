@@ -8,19 +8,19 @@ import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
 
 @Injectable()
 export class RoutingService {
-  private readonly logger = new Logger(RoutingService.name)
+  private readonly logger = new Logger(RoutingService.name);
 
   constructor(
-    private prisma: PrismaService, 
-    private reviewService: ReviewService, 
-    private SQSClient: SQSClientService) {}
-  
+    private prisma: PrismaService,
+    private reviewService: ReviewService,
+    private SQSClient: SQSClientService,
+  ) {}
 
   async route(rawLog: RawLog, slmResponse: SLMResponse) {
     // run storeTransaction
-    await this.storeTransaction(rawLog, slmResponse)
+    await this.storeTransaction(rawLog, slmResponse);
 
-    const decision = slmResponse.decision
+    const decision = slmResponse.decision;
 
     // handle routing
     switch (decision) {
@@ -34,35 +34,41 @@ export class RoutingService {
         await this.handleReview(rawLog, slmResponse, PRIORITY.HIGH);
         break;
       default:
-        this.logger.warn(`[${rawLog.id}] Unexpected decision: ${decision} — routing to HIGH review`);
+        this.logger.warn(
+          `[${rawLog.id}] Unexpected decision: ${decision} — routing to HIGH review`,
+        );
         await this.handleReview(rawLog, slmResponse, PRIORITY.HIGH);
     }
-  } 
+  }
 
-  private async handleAccept(rawLog: RawLog, slmResponse: SLMResponse){
+  private async handleAccept(rawLog: RawLog, slmResponse: SLMResponse) {
     const messageId = await nonBlocking(
       () => this.SQSClient.publish(slmResponse.ocsf!),
       `${rawLog.source}/sqs`,
-      this.logger
-    )
+      this.logger,
+    );
 
-    if(messageId) {
+    if (messageId) {
       await nonBlocking(
-        () => this.prisma.oCSFEvent.update({
-          where: { rawLogId: rawLog.id },
-          data: { publishedToSqs: true, sqsMessageId: messageId }
-        }),
+        () =>
+          this.prisma.oCSFEvent.update({
+            where: { rawLogId: rawLog.id },
+            data: { publishedToSqs: true, sqsMessageId: messageId },
+          }),
         `${rawLog.source}/sqs-track`,
-        this.logger
-      )
+        this.logger,
+      );
     }
   }
 
-  private async handleReview(rawLog: RawLog, slmResponse: SLMResponse, priority: PRIORITY){
-    await this.reviewService.queue(rawLog, slmResponse, priority)
+  private async handleReview(
+    rawLog: RawLog,
+    slmResponse: SLMResponse,
+    priority: PRIORITY,
+  ) {
+    await this.reviewService.queue(rawLog, slmResponse, priority);
   }
 
-  
   private async storeTransaction(rawLog: RawLog, slmResponse: SLMResponse) {
     const ops = [];
 
@@ -82,7 +88,7 @@ export class RoutingService {
             processingTime: slmResponse.processing_time_ms,
           },
         }),
-      )
+      );
     }
 
     ops.push(
@@ -95,7 +101,7 @@ export class RoutingService {
           success: slmResponse.decision === 'accept',
         },
       }),
-    )
+    );
 
     ops.push(
       this.prisma.rawLog.update({
@@ -103,20 +109,22 @@ export class RoutingService {
         data: {
           status: slmResponse.ocsf ? STATUS.PROCESSED : STATUS.FAILED,
           processedAt: new Date(),
-          errorMessage: slmResponse.ocsf ? null : (slmResponse.error || 'No OCSF output produced'),
+          errorMessage: slmResponse.ocsf
+            ? null
+            : slmResponse.error || 'No OCSF output produced',
         },
-      })
-    )
+      }),
+    );
 
     await this.prisma.$transaction(ops);
   }
-  
+
   private mapDecision(decision: string): DECISION {
-  const map: Record<string, DECISION> = {
-    'accept': DECISION.ACCEPT,
-    'review': DECISION.REVIEW,
-    'reject': DECISION.REJECT,
-  };
-  return map[decision] || DECISION.REJECT;
-}
+    const map: Record<string, DECISION> = {
+      accept: DECISION.ACCEPT,
+      review: DECISION.REVIEW,
+      reject: DECISION.REJECT,
+    };
+    return map[decision] || DECISION.REJECT;
+  }
 }

@@ -16,25 +16,22 @@ import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({isGlobal: true}),
+    ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot({
-      throttlers: [{ ttl: 60000, limit: 1000 }],  // 1000 requests per 60 seconds
+      throttlers: [{ ttl: 60000, limit: 1000 }], // 1000 requests per 60 seconds
     }),
-    IngestionModule, 
-    DatabaseModule, 
-    NormalizationModule, 
-    RoutingModule, 
-    DeliveryModule, 
-    ReviewModule, 
-    SLMModule, 
-    MetricsModule, 
-    // JobsModule
+    IngestionModule,
+    DatabaseModule,
+    NormalizationModule,
+    RoutingModule,
+    DeliveryModule,
+    ReviewModule,
+    SLMModule,
+    MetricsModule,
+    JobsModule,
   ],
   controllers: [HealthController],
-  providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard }
-  ],
-  
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

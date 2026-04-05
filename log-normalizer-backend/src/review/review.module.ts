@@ -6,6 +6,6 @@ import { DeliveryModule } from 'src/delivery/delivery.module';
 @Module({
   providers: [ReviewService],
   controllers: [ReviewController],
-  exports: [ReviewService]
+  exports: [ReviewService],
 })
 export class ReviewModule {}

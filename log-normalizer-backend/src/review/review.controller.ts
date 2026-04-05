@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ReviewService } from './review.service';
 import { CorrectionDTO } from './dto/correction.dto';
 import { ApiGuard } from 'src/common/guards/api-key.guard';
@@ -6,9 +14,8 @@ import { ApiGuard } from 'src/common/guards/api-key.guard';
 @UseGuards(ApiGuard)
 @Controller('review')
 export class ReviewController {
-  constructor(private reviewService: ReviewService){}
-  
-  
+  constructor(private reviewService: ReviewService) {}
+
   @Get('pending')
   async getPending(@Query('limit') limit?: string) {
     return await this.reviewService.getPending(limit ? parseInt(limit) : 20);
@@ -16,6 +23,10 @@ export class ReviewController {
 
   @Post(':id/correct')
   async correct(@Param('id') reviewId: string, @Body() dto: CorrectionDTO) {
-    return await this.reviewService.submitCorrection(reviewId, dto.correctedOcsf, dto.reviewer)
+    return await this.reviewService.submitCorrection(
+      reviewId,
+      dto.correctedOcsf,
+      dto.reviewer,
+    );
   }
 }

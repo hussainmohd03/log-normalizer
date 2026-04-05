@@ -1,23 +1,25 @@
-import { HttpService } from "@nestjs/axios";
-import { Injectable, OnModuleInit } from "@nestjs/common";
-import { Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { SLMRequest } from "src/common/interfaces/slm-request.interface";
-import { SLMResponse } from "src/common/interfaces/slm-response.interface";
-import CircuitBreaker from "opossum";
-import { firstValueFrom } from "rxjs";
-import { ValidationResult } from "src/common/interfaces/validation-result.interface";
+import { HttpService } from '@nestjs/axios';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SLMRequest } from 'src/common/interfaces/slm-request.interface';
+import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
+import CircuitBreaker from 'opossum';
+import { firstValueFrom } from 'rxjs';
+import { ValidationResult } from 'src/common/interfaces/validation-result.interface';
 
 @Injectable()
-export class SLMService implements OnModuleInit{
-  private readonly logger = new Logger("SLMClient")
-  private breaker!: CircuitBreaker<[SLMRequest], SLMResponse>
+export class SLMService implements OnModuleInit {
+  private readonly logger = new Logger('SLMClient');
+  private breaker!: CircuitBreaker<[SLMRequest], SLMResponse>;
   private readonly slmUrl: string;
 
-
-  constructor(private config: ConfigService, private httpService: HttpService) {
+  constructor(
+    private config: ConfigService,
+    private httpService: HttpService,
+  ) {
     const url = this.config.get('SLM_API');
-    if(!url) throw new Error('SLM_API environment variable is required');
+    if (!url) throw new Error('SLM_API environment variable is required');
     this.slmUrl = url;
   }
 
@@ -25,26 +27,30 @@ export class SLMService implements OnModuleInit{
     this.breaker = new CircuitBreaker(
       (payload: SLMRequest) => this.callSLM(payload),
       {
-        timeout: this.config.get('TIMEOUT'),                  // 15s request timeout
-        errorThresholdPercentage: this.config.get('ERROR_THRESHOLD_PERCENTAGE'),    // open after 50% failures
-        resetTimeout: this.config.get('RESET_TIMEOUT'),             // try again after 60s
-        volumeThreshold: this.config.get('VOLUME_THRESHOLD'),              // need 5 requests before opening
+        timeout: this.config.get('TIMEOUT'), // 15s request timeout
+        errorThresholdPercentage: this.config.get('ERROR_THRESHOLD_PERCENTAGE'), // open after 50% failures
+        resetTimeout: this.config.get('RESET_TIMEOUT'), // try again after 60s
+        volumeThreshold: this.config.get('VOLUME_THRESHOLD'), // need 5 requests before opening
       },
     );
 
-    this.breaker.on('open', () => this.logger.warn('Circuit OPEN — SLM unavailable'));
-    this.breaker.on('halfOpen', () => this.logger.log('Circuit HALF-OPEN — testing SLM'));
-    this.breaker.on('close', () => this.logger.log('Circuit CLOSED — SLM recovered'));
+    this.breaker.on('open', () =>
+      this.logger.warn('Circuit OPEN — SLM unavailable'),
+    );
+    this.breaker.on('halfOpen', () =>
+      this.logger.log('Circuit HALF-OPEN — testing SLM'),
+    );
+    this.breaker.on('close', () =>
+      this.logger.log('Circuit CLOSED — SLM recovered'),
+    );
   }
 
-
-
   async normalize(request: SLMRequest): Promise<SLMResponse> {
-    return this.breaker.fire(request)
+    return this.breaker.fire(request);
   }
 
   private async callSLM(payload: SLMRequest): Promise<SLMResponse> {
-    const {data} = await firstValueFrom(
+    const { data } = await firstValueFrom(
       this.httpService.post<SLMResponse>(
         `${this.slmUrl}/api/normalize`,
         payload,
@@ -52,20 +58,22 @@ export class SLMService implements OnModuleInit{
     );
     return data;
   }
-    
-  isHealthy(){
-    return !this.breaker.opened
+
+  isHealthy() {
+    return !this.breaker.opened;
   }
-  
+
   async slmHealth() {
-    const {data} = await firstValueFrom(this.httpService.get(`${this.slmUrl}/health`))
-    return data
+    const { data } = await firstValueFrom(
+      this.httpService.get(`${this.slmUrl}/health`),
+    );
+    return data;
   }
 
   async validate(ocsf: Record<string, any>): Promise<ValidationResult> {
-    const { data } = await firstValueFrom(this.httpService.post(`${this.slmUrl}/api/validate`, { ocsf }))
-    return data
+    const { data } = await firstValueFrom(
+      this.httpService.post(`${this.slmUrl}/api/validate`, { ocsf }),
+    );
+    return data;
   }
 }
-
-
