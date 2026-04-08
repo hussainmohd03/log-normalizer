@@ -17,7 +17,11 @@ from app.schemas.response import NormalizeResponse
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_gpu_semaphore = asyncio.Semaphore(1)
+# Final safety net for catastrophic inference hangs. Concurrency control
+# now lives in the BullMQ worker (concurrency=1) — this service trusts
+# the caller to serialize requests and only enforces an upper bound so a
+# wedged generation cannot pin the GPU forever.
+_INFERENCE_TIMEOUT_SECONDS = 600
 
 
 def _sync_normalize(req: NormalizeRequest) -> NormalizeResponse:
@@ -86,12 +90,18 @@ async def normalize(req: NormalizeRequest):
     if not model_manager.is_ready:
         return JSONResponse(status_code=503, content={"error": "Model loading, try again"})
 
-    if _gpu_semaphore.locked():
-        return JSONResponse(status_code=503, content={"error": "GPU busy"})
-
-    async with _gpu_semaphore:
-        result = await asyncio.get_event_loop().run_in_executor(None, _sync_normalize, req)
-        return result
+    loop = asyncio.get_event_loop()
+    try:
+        return await asyncio.wait_for(
+            loop.run_in_executor(None, _sync_normalize, req),
+            timeout=_INFERENCE_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        logger.error("Normalize timed out after %ds", _INFERENCE_TIMEOUT_SECONDS)
+        return JSONResponse(
+            status_code=504,
+            content={"error": f"inference timeout after {_INFERENCE_TIMEOUT_SECONDS}s"},
+        )
 
 
 @router.post("/validate")
