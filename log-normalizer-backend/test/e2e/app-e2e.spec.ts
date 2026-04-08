@@ -100,8 +100,10 @@ describe('App E2E', () => {
       .post('/api/logs/ingest/batch')
       .set('x-api-key', process.env.API_KEY!)
       .send({
-        source: 'splunk',
-        alerts: [{ alert_id: '1' }, { alert_id: '2' }],
+        items: [
+          { source: 'splunk', rawContent: { alert_id: '1' } },
+          { source: 'splunk', rawContent: { alert_id: '2' } },
+        ],
       })
       .expect(202)
 
@@ -109,6 +111,34 @@ describe('App E2E', () => {
     expect(res.body.status).toBe('queued')
     expect(res.body.jobIds).toHaveLength(2)
     expect(res.body.jobIds[0]).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
+  // -- Idempotency --
+  it('POST /api/logs/ingest with the same Idempotency-Key returns the same jobId', async () => {
+    const key = 'e2e-key-' + Date.now()
+    const body = { source: 'crowdstrike', rawContent: { alert_id: 'idem-1' } }
+
+    const first = await request(app.getHttpServer())
+      .post('/api/logs/ingest')
+      .set('x-api-key', process.env.API_KEY!)
+      .set('Idempotency-Key', key)
+      .send(body)
+      .expect(202)
+
+    const second = await request(app.getHttpServer())
+      .post('/api/logs/ingest')
+      .set('x-api-key', process.env.API_KEY!)
+      .set('Idempotency-Key', key)
+      .send(body)
+      .expect(202)
+
+    expect(first.body.jobId).toBe(second.body.jobId)
+
+    // Exactly one row exists for that key.
+    const rows = await prisma.normalizeJob.findMany({
+      where: { idempotencyKey: key },
+    })
+    expect(rows).toHaveLength(1)
   })
 
   // -- Metrics --

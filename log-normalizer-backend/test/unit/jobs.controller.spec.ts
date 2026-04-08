@@ -9,9 +9,10 @@ import { JobsService } from '../../src/jobs/jobs.service';
 const ROW: NormalizeJob = {
   id: 'a3f1c4e2-1234-4abc-9def-0123456789ab',
   status: JobStatus.QUEUED,
-  rawLog: '{"sensitive":"input"}',
+  rawLog: { sensitive: 'input' },
   source: 'crowdstrike',
   format: 'json',
+  idempotencyKey: null,
   ocsf: null,
   confidence: null,
   decision: null,

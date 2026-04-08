@@ -4,9 +4,10 @@ import { toJobResponse } from '../../src/jobs/dto/job-response.dto';
 const BASE: NormalizeJob = {
   id: 'job-uuid-1',
   status: JobStatus.QUEUED,
-  rawLog: '{"sensitive":"input"}',
+  rawLog: { sensitive: 'input' },
   source: 'crowdstrike',
   format: 'json',
+  idempotencyKey: null,
   ocsf: null,
   confidence: null,
   decision: null,

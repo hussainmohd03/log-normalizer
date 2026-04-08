@@ -13,6 +13,7 @@ const ROW: NormalizeJob = {
   rawLog: { alert: 'x' },
   source: 'crowdstrike',
   format: 'json',
+  idempotencyKey: null,
   ocsf: null,
   confidence: null,
   decision: null,

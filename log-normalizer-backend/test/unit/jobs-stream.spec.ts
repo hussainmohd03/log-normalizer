@@ -11,9 +11,10 @@ function row(overrides: Partial<NormalizeJob> = {}): NormalizeJob {
   return {
     id: JOB_ID,
     status: JobStatus.QUEUED,
-    rawLog: '{}',
+    rawLog: {},
     source: 'crowdstrike',
     format: 'json',
+    idempotencyKey: null,
     ocsf: null,
     confidence: null,
     decision: null,
