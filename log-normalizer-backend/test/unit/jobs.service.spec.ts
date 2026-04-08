@@ -4,9 +4,9 @@ import { ConfigModule } from '@nestjs/config';
 import { JobStatus } from 'generated/prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { cleanDatabase } from 'test/helper/prisma-test';
-import { CompleteNormalizeJobDto } from './dto/complete-normalize-job.dto';
-import { CreateNormalizeJobDto } from './dto/create-normalize-job.dto';
-import { JobsService } from './jobs.service';
+import { CompleteNormalizeJobDto } from '../../src/jobs/dto/complete-normalize-job.dto';
+import { CreateNormalizeJobDto } from '../../src/jobs/dto/create-normalize-job.dto';
+import { JobsService } from '../../src/jobs/jobs.service';
 
 const SAMPLE_DTO: CreateNormalizeJobDto = {
   rawLog: '{"alert_id":"test-1","severity":"high"}',
@@ -19,7 +19,7 @@ const SAMPLE_RESULT: CompleteNormalizeJobDto = {
   confidence: 0.91,
   decision: 'ACCEPT',
   breakdown: { field_coverage: 0.95 },
-  validationErrors: null,
+  validationErrors: [],
   processingTimeMs: 3200,
 };
 

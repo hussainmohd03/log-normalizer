@@ -1,8 +1,8 @@
 // src/queue/normalize.producer.spec.ts
 import { Test } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
-import { NormalizeProducer } from './normalize.producer';
-import { NORMALIZE_QUEUE } from './queue-names';
+import { NormalizeProducer } from '../../src/queue/normalize.producer';
+import { NORMALIZE_QUEUE } from '../../src/queue/queue-names';
 
 describe('NormalizeProducer', () => {
   let producer: NormalizeProducer;
