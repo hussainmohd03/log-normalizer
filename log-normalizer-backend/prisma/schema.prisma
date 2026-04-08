@@ -12,41 +12,17 @@ datasource db {
   provider = "postgresql"
 }
 
-enum STATUS {
-  PENDING
-  IN_PROGRESS
-  PROCESSED
-  FAILED
-}
-
-// @deprecated — replaced by NormalizeJob (async queue flow). Remove when
-// normalize.controller.ts old sync path is retired (Week 1, Steps 4-6).
-model RawLog {
-  id            String         @id @default(uuid())
-  source        String
-  format        String?
-  rawContent    Json
-  receivedAt    DateTime       @default(now())
-  processedAt   DateTime?
-  status        STATUS         @default(PENDING)
-  errorMessage  String?
-  ocsf          OCSFEvent?
-  manualReviews ManualReview[]
-
-  @@index([source, receivedAt])
-  @@index([status])
-}
-
 enum DECISION {
   ACCEPT
   REVIEW
   REJECT
   CORRECTED
 }
+
 model OCSFEvent {
-  id             String   @id @default(uuid())
-  rawLogId       String   @unique
-  rawLog         RawLog   @relation(fields: [rawLogId], references: [id])
+  id             String       @id @default(uuid())
+  normalizeJobId String       @unique
+  normalizeJob   NormalizeJob @relation(fields: [normalizeJobId], references: [id], onDelete: Cascade)
   classUid       Int
   className      String
   activityId     Int?
@@ -56,8 +32,8 @@ model OCSFEvent {
   confidence     Float
   decision       DECISION
   processingTime Int
-  normalizedAt   DateTime @default(now())
-  publishedToSqs Boolean  @default(false)
+  normalizedAt   DateTime     @default(now())
+  publishedToSqs Boolean      @default(false)
   sqsMessageId   String?
 
   @@index([classUid, normalizedAt])
@@ -72,20 +48,20 @@ enum PRIORITY {
 }
 
 model ManualReview {
-  id                  String    @id @default(uuid())
-  rawLogId            String
-  rawLog              RawLog    @relation(fields: [rawLogId], references: [id])
+  id                  String       @id @default(uuid())
+  normalizeJobId      String
+  normalizeJob        NormalizeJob @relation(fields: [normalizeJobId], references: [id], onDelete: Cascade)
   source              String
   slmOcsfOutput       Json
   confidence          Float
   confidenceBreakdown Json?
   validationErrors    Json?
-  priority            PRIORITY  @default(NORMAL)
-  queuedAt            DateTime  @default(now())
+  priority            PRIORITY     @default(NORMAL)
+  queuedAt            DateTime     @default(now())
   reviewedAt          DateTime?
   reviewedBy          String?
   correctedOCSF       Json?
-  exportedForTraining Boolean   @default(false)
+  exportedForTraining Boolean      @default(false)
 
   @@index([queuedAt])
   @@index([reviewedAt])
@@ -113,9 +89,9 @@ enum JobStatus {
 }
 
 model NormalizeJob {
-  id               String    @id @default(uuid())
-  status           JobStatus @default(QUEUED)
-  rawLog           String    @db.Text
+  id               String         @id @default(uuid())
+  status           JobStatus      @default(QUEUED)
+  rawLog           Json
   source           String
   format           String
   ocsf             Json?
@@ -125,11 +101,13 @@ model NormalizeJob {
   validationErrors Json?
   processingTimeMs Int?
   error            String?
-  attempts         Int       @default(0)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  attempts         Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
   startedAt        DateTime?
   completedAt      DateTime?
+  ocsfEvent        OCSFEvent?
+  manualReviews    ManualReview[]
 
   @@index([status])
   @@index([createdAt])
