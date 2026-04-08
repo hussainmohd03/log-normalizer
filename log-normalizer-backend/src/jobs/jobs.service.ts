@@ -107,7 +107,8 @@ export class JobsService {
       await this.prisma.normalizeJob.delete({ where: { id } });
     } catch (err: unknown) {
       this.logger.warn(
-        `deleteQuietly: could not delete job ${id} — ${(err as Error).message}`,
+        { jobId: id, err: (err as Error).message },
+        'jobs.delete_quietly_failed',
       );
     }
   }
