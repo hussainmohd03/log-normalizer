@@ -106,7 +106,9 @@ describe('App E2E', () => {
       .expect(202)
 
     expect(res.body.count).toBe(2)
-    expect(res.body.status).toBe('accepted')
+    expect(res.body.status).toBe('queued')
+    expect(res.body.jobIds).toHaveLength(2)
+    expect(res.body.jobIds[0]).toMatch(/^[0-9a-f-]{36}$/)
   })
 
   // -- Metrics --

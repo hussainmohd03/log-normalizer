@@ -163,7 +163,7 @@ describe('JobsService', () => {
       expect(updated.confidence).toBe(SAMPLE_RESULT.confidence);
       expect(updated.decision).toBe(SAMPLE_RESULT.decision);
       expect(updated.processingTimeMs).toBe(SAMPLE_RESULT.processingTimeMs);
-      expect(updated.validationErrors).toBeNull();
+      expect(updated.validationErrors).toEqual([]);
       expect(updated.ocsf).toEqual(SAMPLE_RESULT.ocsf);
     });
 
