@@ -1,13 +1,17 @@
 import {
   Controller,
   Get,
+  MessageEvent,
   NotFoundException,
   Param,
   ParseUUIDPipe,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { ApiGuard } from 'src/common/guards/api-key.guard';
 import { JobResponse, toJobResponse } from './dto/job-response.dto';
+import { JobsEventsService } from './jobs-events.service';
 import { JobsService } from './jobs.service';
 
 /**
@@ -23,7 +27,10 @@ import { JobsService } from './jobs.service';
 @Controller('normalize/jobs')
 @UseGuards(ApiGuard)
 export class JobsController {
-  constructor(private readonly jobsService: JobsService) {}
+  constructor(
+    private readonly jobsService: JobsService,
+    private readonly jobsEventsService: JobsEventsService,
+  ) {}
 
   @Get(':id')
   async findOne(
@@ -34,5 +41,24 @@ export class JobsController {
       throw new NotFoundException(`Job ${id} not found`);
     }
     return toJobResponse(row);
+  }
+
+  /**
+   * Server-Sent Events stream of job state. Emits the current DB row
+   * immediately, then one event per state transition, then completes
+   * when the job reaches COMPLETED or FAILED.
+   *
+   * Lifecycle:
+   *  - Late connect (already terminal): one event, immediate close.
+   *  - Mid-stream client disconnect: Nest unsubscribes the observable;
+   *    the per-client filter pipeline tears down. The shared QueueEvents
+   *    subscription stays alive for other clients.
+   *  - Row missing at connect: NotFoundException → 404 before SSE opens.
+   */
+  @Sse(':id/events')
+  events(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Observable<MessageEvent> {
+    return this.jobsEventsService.streamJob(id);
   }
 }

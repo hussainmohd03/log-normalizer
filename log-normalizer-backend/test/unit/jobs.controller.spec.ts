@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JobStatus, NormalizeJob } from 'generated/prisma/client';
 import { ApiGuard } from '../../src/common/guards/api-key.guard';
+import { JobsEventsService } from '../../src/jobs/jobs-events.service';
 import { JobsController } from '../../src/jobs/jobs.controller';
 import { JobsService } from '../../src/jobs/jobs.service';
 
@@ -31,10 +32,14 @@ describe('JobsController', () => {
 
   beforeEach(async () => {
     mockJobs = { findById: jest.fn() };
+    const mockEvents = { streamJob: jest.fn() };
 
     const module = await Test.createTestingModule({
       controllers: [JobsController],
-      providers: [{ provide: JobsService, useValue: mockJobs }],
+      providers: [
+        { provide: JobsService, useValue: mockJobs },
+        { provide: JobsEventsService, useValue: mockEvents },
+      ],
     })
       .overrideGuard(ApiGuard)
       .useValue({ canActivate: () => true })
