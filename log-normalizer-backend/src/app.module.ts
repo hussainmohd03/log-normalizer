@@ -9,6 +9,7 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { ReviewModule } from './review/review.module';
 import { SLMModule } from './slm/slm.module';
 import { JobsModule } from './jobs/jobs.module';
+import { NormalizeModule } from './normalize/normalize.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MetricsModule } from './metrics/metrics.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -21,15 +22,16 @@ import { APP_GUARD } from '@nestjs/core';
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60000, limit: 1000 }],  // 1000 requests per 60 seconds
     }),
-    IngestionModule, 
-    DatabaseModule, 
-    NormalizationModule, 
-    RoutingModule, 
-    DeliveryModule, 
-    ReviewModule, 
-    SLMModule, 
-    MetricsModule, 
-    // JobsModule
+    IngestionModule,
+    DatabaseModule,
+    NormalizationModule,
+    RoutingModule,
+    DeliveryModule,
+    ReviewModule,
+    SLMModule,
+    MetricsModule,
+    JobsModule,
+    NormalizeModule,
   ],
   controllers: [HealthController],
   providers: [
