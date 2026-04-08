@@ -94,6 +94,7 @@ model NormalizeJob {
   rawLog           Json
   source           String
   format           String
+  idempotencyKey   String?        @unique
   ocsf             Json?
   confidence       Float?
   decision         String?
