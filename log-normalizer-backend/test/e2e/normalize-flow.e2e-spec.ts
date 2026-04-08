@@ -25,6 +25,7 @@ import IORedis from 'ioredis'
 import request from 'supertest'
 import { AppModule } from 'src/app.module'
 import { PrismaService } from 'src/database/prisma.service'
+import { SQSClientService } from 'src/delivery/sqs-client.service'
 import { NORMALIZE_QUEUE } from 'src/queue/queue-names'
 import { SLMService } from 'src/slm/slm.service'
 import { WorkerModule } from 'src/worker/worker.module'
@@ -71,6 +72,7 @@ describe('Normalize async flow E2E', () => {
   let prisma: PrismaService
   let queue: Queue
   let slmMock: { normalize: jest.Mock }
+  let sqsMock: { publish: jest.Mock }
 
   beforeAll(async () => {
     // Fail fast if Redis is unreachable so we get a clear error instead
@@ -94,6 +96,10 @@ describe('Normalize async flow E2E', () => {
     }
 
     slmMock = { normalize: jest.fn() }
+    // Mock SQS so the routing chain's handleAccept doesn't try to load
+    // the AWS SDK under Jest's CJS VM (which can't handle the SDK's
+    // dynamic ESM imports). Production code is unaffected.
+    sqsMock = { publish: jest.fn().mockResolvedValue('mock-msg-id') }
 
     // ── HTTP context (AppModule) ───────────────────────────────────────
     const httpModule = await Test.createTestingModule({
@@ -101,6 +107,8 @@ describe('Normalize async flow E2E', () => {
     })
       .overrideProvider(SLMService)
       .useValue(slmMock)
+      .overrideProvider(SQSClientService)
+      .useValue(sqsMock)
       .compile()
 
     httpApp = httpModule.createNestApplication()
@@ -122,6 +130,8 @@ describe('Normalize async flow E2E', () => {
     })
       .overrideProvider(SLMService)
       .useValue(slmMock)
+      .overrideProvider(SQSClientService)
+      .useValue(sqsMock)
       .compile()
 
     // TestingModule extends NestApplicationContext — init() runs lifecycle
@@ -131,6 +141,7 @@ describe('Normalize async flow E2E', () => {
 
   beforeEach(async () => {
     slmMock.normalize.mockReset()
+    sqsMock.publish.mockReset().mockResolvedValue('mock-msg-id')
     await cleanDatabase(prisma)
     await queue.obliterate({ force: true })
   })
@@ -196,6 +207,12 @@ describe('Normalize async flow E2E', () => {
     const ocsf = await prisma.oCSFEvent.findUnique({ where: { normalizeJobId: jobId } })
     expect(ocsf).not.toBeNull()
     expect(ocsf!.confidence).toBeCloseTo(0.92)
+
+    // SQS publish was triggered for the accept decision
+    expect(sqsMock.publish).toHaveBeenCalledTimes(1)
+    expect(sqsMock.publish).toHaveBeenCalledWith(SUCCESS_RESPONSE.ocsf)
+    expect(ocsf!.publishedToSqs).toBe(true)
+    expect(ocsf!.sqsMessageId).toBe('mock-msg-id')
   }, 30_000)
 
   it('SLM throws → worker marks the row FAILED with the error message', async () => {
