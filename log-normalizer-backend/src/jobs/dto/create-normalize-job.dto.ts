@@ -4,4 +4,5 @@ export class CreateNormalizeJobDto {
   rawLog!: Prisma.InputJsonValue;
   source!: string;
   format!: string;
+  idempotencyKey?: string;
 }

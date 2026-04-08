@@ -16,12 +16,17 @@ export class JobsService {
         rawLog: dto.rawLog,
         source: dto.source,
         format: dto.format,
+        idempotencyKey: dto.idempotencyKey,
       },
     });
   }
 
   async findById(id: string): Promise<NormalizeJob | null> {
     return this.prisma.normalizeJob.findUnique({ where: { id } });
+  }
+
+  async findByIdempotencyKey(key: string): Promise<NormalizeJob | null> {
+    return this.prisma.normalizeJob.findUnique({ where: { idempotencyKey: key } });
   }
 
   /**
