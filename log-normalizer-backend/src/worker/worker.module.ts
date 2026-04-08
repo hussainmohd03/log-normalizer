@@ -23,12 +23,14 @@ import { NormalizeProcessor } from './normalize.processor';
  */
 @Module({
   imports: [
-    ConfigModule,
+    // forRoot is required — without it, ConfigService is not registered
+    // and PrismaService (which depends on it) fails to resolve.
+    // isGlobal so SLMModule, BullModule, etc. can inject it transitively.
+    ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     SLMModule,
     RoutingModule,
     BullModule.forRootAsync({
-      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: { url: config.getOrThrow<string>('REDIS_URL') },
