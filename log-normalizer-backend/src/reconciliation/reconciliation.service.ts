@@ -42,6 +42,7 @@ export class ReconciliationService {
 
   private readonly stuckActiveMs: number;
   private readonly stuckQueuedMs: number;
+  private readonly idempotencyKeyTtlMs: number;
   private readonly batchSize: number;
 
   constructor(
@@ -55,6 +56,9 @@ export class ReconciliationService {
     this.stuckQueuedMs =
       (parseInt(this.config.get<string>('RECONCILE_STUCK_QUEUED_MINUTES') ?? '') || 60) *
       60_000;
+    this.idempotencyKeyTtlMs =
+      (parseInt(this.config.get<string>('IDEMPOTENCY_KEY_RETENTION_HOURS') ?? '') || 24) *
+      60 * 60_000;
     this.batchSize =
       parseInt(this.config.get<string>('RECONCILE_BATCH_SIZE') ?? '') || 100;
   }
@@ -71,11 +75,13 @@ export class ReconciliationService {
     try {
       const activeFixed = await this.sweepActive();
       const queuedFixed = await this.sweepQueued();
+      const keysExpired = await this.sweepIdempotencyKeys();
 
       this.logger.log(
         {
           activeOrphansFixed: activeFixed,
           queuedOrphansFixed: queuedFixed,
+          idempotencyKeysExpired: keysExpired,
           durationMs: Date.now() - startedAt,
         },
         'reconciliation.sweep.complete',
@@ -168,5 +174,37 @@ export class ReconciliationService {
     }
 
     return fixed;
+  }
+
+  /**
+   * Sweep C — TTL cleanup for idempotency keys.
+   *
+   * After IDEMPOTENCY_KEY_RETENTION_HOURS, NULL out the idempotencyKey
+   * column on rows older than the cutoff. The row stays for audit/history
+   * — only the unique key is released so it can be reused by a future
+   * client retry that wants the same logical operation ID.
+   *
+   * Single atomic UPDATE; no race concerns (worker doesn't touch this
+   * column).
+   */
+  async sweepIdempotencyKeys(): Promise<number> {
+    const cutoff = new Date(Date.now() - this.idempotencyKeyTtlMs);
+
+    const { count } = await this.prisma.normalizeJob.updateMany({
+      where: {
+        idempotencyKey: { not: null },
+        createdAt: { lt: cutoff },
+      },
+      data: { idempotencyKey: null },
+    });
+
+    if (count > 0) {
+      this.logger.log(
+        { expired: count, cutoff: cutoff.toISOString() },
+        'reconciliation.idempotency_keys_expired',
+      );
+    }
+
+    return count;
   }
 }
