@@ -7,11 +7,13 @@ import { ReconciliationService } from 'src/reconciliation/reconciliation.service
 
 const STUCK_ACTIVE_MINUTES = 15
 const STUCK_QUEUED_MINUTES = 60
+const IDEMPOTENCY_KEY_RETENTION_HOURS = 24
 const BATCH_SIZE = 100
 
 const ENV: Record<string, string> = {
   RECONCILE_STUCK_ACTIVE_MINUTES: String(STUCK_ACTIVE_MINUTES),
   RECONCILE_STUCK_QUEUED_MINUTES: String(STUCK_QUEUED_MINUTES),
+  IDEMPOTENCY_KEY_RETENTION_HOURS: String(IDEMPOTENCY_KEY_RETENTION_HOURS),
   RECONCILE_BATCH_SIZE: String(BATCH_SIZE),
 }
 
@@ -193,6 +195,50 @@ describe('ReconciliationService — sweepQueued', () => {
   })
 })
 
+describe('ReconciliationService — sweepIdempotencyKeys', () => {
+  let prisma: ReturnType<typeof makePrismaMock>
+  let queue: ReturnType<typeof makeQueueMock>
+  let service: ReconciliationService
+
+  beforeEach(async () => {
+    prisma = makePrismaMock()
+    queue = makeQueueMock()
+    service = await build(prisma, queue)
+  })
+
+  it('NULLs out idempotencyKey on rows older than the TTL', async () => {
+    prisma.normalizeJob.updateMany.mockResolvedValueOnce({ count: 4 })
+
+    const expired = await service.sweepIdempotencyKeys()
+
+    expect(expired).toBe(4)
+    const call = prisma.normalizeJob.updateMany.mock.calls[0][0]
+    expect(call.where.idempotencyKey).toEqual({ not: null })
+    expect(call.where.createdAt.lt).toBeInstanceOf(Date)
+    expect(call.data).toEqual({ idempotencyKey: null })
+  })
+
+  it('cutoff is now - IDEMPOTENCY_KEY_RETENTION_HOURS (within 1s tolerance)', async () => {
+    const before = Date.now()
+    await service.sweepIdempotencyKeys()
+    const call = prisma.normalizeJob.updateMany.mock.calls[0][0]
+    const cutoffMs = (call.where.createdAt.lt as Date).getTime()
+
+    const expected = before - IDEMPOTENCY_KEY_RETENTION_HOURS * 60 * 60_000
+    expect(Math.abs(cutoffMs - expected)).toBeLessThan(1000)
+  })
+
+  it('returns 0 when no rows match (no log emitted is fine)', async () => {
+    prisma.normalizeJob.updateMany.mockResolvedValueOnce({ count: 0 })
+    await expect(service.sweepIdempotencyKeys()).resolves.toBe(0)
+  })
+
+  it('does not touch the queue', async () => {
+    await service.sweepIdempotencyKeys()
+    expect(queue.getJob).not.toHaveBeenCalled()
+  })
+})
+
 describe('ReconciliationService — sweep (cron entry point)', () => {
   let prisma: ReturnType<typeof makePrismaMock>
   let queue: ReturnType<typeof makeQueueMock>
@@ -204,17 +250,22 @@ describe('ReconciliationService — sweep (cron entry point)', () => {
     service = await build(prisma, queue)
   })
 
-  it('runs sweepActive then sweepQueued and resolves', async () => {
+  it('runs sweepActive then sweepQueued then sweepIdempotencyKeys', async () => {
     const spyA = jest.spyOn(service, 'sweepActive').mockResolvedValueOnce(2)
     const spyQ = jest.spyOn(service, 'sweepQueued').mockResolvedValueOnce(1)
+    const spyK = jest.spyOn(service, 'sweepIdempotencyKeys').mockResolvedValueOnce(7)
 
     await service.sweep()
 
     expect(spyA).toHaveBeenCalledTimes(1)
     expect(spyQ).toHaveBeenCalledTimes(1)
-    // sweepActive must run before sweepQueued
+    expect(spyK).toHaveBeenCalledTimes(1)
+    // Order: active → queued → idempotency keys
     expect(spyA.mock.invocationCallOrder[0]).toBeLessThan(
       spyQ.mock.invocationCallOrder[0],
+    )
+    expect(spyQ.mock.invocationCallOrder[0]).toBeLessThan(
+      spyK.mock.invocationCallOrder[0],
     )
   })
 
@@ -228,6 +279,7 @@ describe('ReconciliationService — sweep (cron entry point)', () => {
       return 0
     })
     jest.spyOn(service, 'sweepQueued').mockResolvedValue(0)
+    jest.spyOn(service, 'sweepIdempotencyKeys').mockResolvedValue(0)
 
     const first = service.sweep()
     // While the first is suspended inside sweepActive, kick off a second.
@@ -251,6 +303,7 @@ describe('ReconciliationService — sweep (cron entry point)', () => {
     // Running flag was reset so the next tick can proceed.
     jest.spyOn(service, 'sweepActive').mockResolvedValueOnce(0)
     jest.spyOn(service, 'sweepQueued').mockResolvedValueOnce(0)
+    jest.spyOn(service, 'sweepIdempotencyKeys').mockResolvedValueOnce(0)
     await expect(service.sweep()).resolves.toBeUndefined()
     expect(service.sweepActive).toHaveBeenCalledTimes(2)
   })
