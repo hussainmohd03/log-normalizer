@@ -1,11 +1,12 @@
 import { Module } from "@nestjs/common";
+import { JobsModule } from "src/jobs/jobs.module";
+import { QueueModule } from "src/queue/queue.module";
 import { IngestionController } from "./ingestion.controller";
 import { IngestionService } from "./ingestion.service";
-import { NormalizationModule } from "src/normalization/normalization.module";
 
 @Module({
-  imports: [NormalizationModule], 
-  controllers: [IngestionController], 
+  imports: [JobsModule, QueueModule],
+  controllers: [IngestionController],
   providers: [IngestionService]
 })
 export class IngestionModule {}

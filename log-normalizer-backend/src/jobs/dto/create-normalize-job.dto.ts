@@ -1,15 +1,7 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { Prisma } from 'generated/prisma/client';
 
 export class CreateNormalizeJobDto {
-  @IsString()
-  @IsNotEmpty()
-  rawLog: string;
-
-  @IsString()
-  @IsNotEmpty()
-  source: string;
-
-  @IsString()
-  @IsNotEmpty()
-  format: string;
+  rawLog!: Prisma.InputJsonValue;
+  source!: string;
+  format!: string;
 }
