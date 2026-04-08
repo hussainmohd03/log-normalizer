@@ -1,8 +1,10 @@
+import { Prisma } from 'generated/prisma/client';
+
 export class CompleteNormalizeJobDto {
-  ocsf: Record<string, unknown>;
+  ocsf: Prisma.InputJsonValue;
   confidence: number;
   decision: string;
-  breakdown: Record<string, unknown>;
-  validationErrors: Record<string, unknown> | null;
+  breakdown: Prisma.InputJsonValue;
+  validationErrors: Prisma.InputJsonValue;
   processingTimeMs: number;
 }
