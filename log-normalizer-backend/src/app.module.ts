@@ -8,6 +8,7 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { ReviewModule } from './review/review.module';
 import { SLMModule } from './slm/slm.module';
 import { JobsModule } from './jobs/jobs.module';
+import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MetricsModule } from './metrics/metrics.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -28,6 +29,7 @@ import { APP_GUARD } from '@nestjs/core';
     SLMModule,
     MetricsModule,
     JobsModule,
+    ReconciliationModule,
   ],
   controllers: [HealthController],
   providers: [
