@@ -1,6 +1,40 @@
 /* -- Navigation -- */
 
-export type Page = 'dashboard' | 'review' | 'metrics' | 'health'
+export type Page = 'dashboard' | 'submit' | 'review' | 'metrics' | 'health'
+
+/* -- Normalize jobs -- */
+
+export type JobStatus = 'QUEUED' | 'ACTIVE' | 'COMPLETED' | 'FAILED'
+
+export interface JobResult {
+  ocsf: unknown
+  confidence: number
+  decision: string
+  breakdown: unknown
+  validationErrors: unknown
+  processingTimeMs: number
+}
+
+export interface JobResponse {
+  jobId: string
+  status: JobStatus
+  createdAt: string
+  startedAt: string | null
+  completedAt: string | null
+  result: JobResult | null
+  error: string | null
+}
+
+export interface EnqueueResponse {
+  jobId: string
+  status: 'queued'
+}
+
+export interface NormalizeRequest {
+  rawLog: string
+  source: string
+  format: string
+}
 
 /* -- Metrics -- */
 export interface SystemMetrics {

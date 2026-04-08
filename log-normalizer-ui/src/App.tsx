@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
+import Submit from './pages/Submit'
 import ReviewQueue from './pages/ReviewQueue'
 import Metrics from './pages/Metrics'
 import Health from './pages/Health'
@@ -12,6 +13,7 @@ const App = () => {
   return (
     <Layout activePage={page} onNavigate={setPage}>
       {page === 'dashboard' && <Dashboard />}
+      {page === 'submit'    && <Submit />}
       {page === 'review'    && <ReviewQueue />}
       {page === 'metrics'   && <Metrics />}
       {page === 'health'    && <Health />}
