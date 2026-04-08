@@ -19,6 +19,8 @@ enum STATUS {
   FAILED
 }
 
+// @deprecated — replaced by NormalizeJob (async queue flow). Remove when
+// normalize.controller.ts old sync path is retired (Week 1, Steps 4-6).
 model RawLog {
   id            String         @id @default(uuid())
   source        String
@@ -91,14 +93,44 @@ model ManualReview {
 }
 
 model ProcessingMetric {
-  id         String   @id @default(uuid())
-  timestamp  DateTime @default(now())
+  id         String    @id @default(uuid())
+  timestamp  DateTime  @default(now())
   source     String
   confidence Float?
   latencyMs  Int?
   decision   DECISION?
-  success    Boolean  @default(true)
+  success    Boolean   @default(true)
 
   @@index([timestamp, source])
   @@index([source, timestamp])
+}
+
+enum JobStatus {
+  QUEUED
+  ACTIVE
+  COMPLETED
+  FAILED
+}
+
+model NormalizeJob {
+  id               String    @id @default(uuid())
+  status           JobStatus @default(QUEUED)
+  rawLog           String    @db.Text
+  source           String
+  format           String
+  ocsf             Json?
+  confidence       Float?
+  decision         String?
+  breakdown        Json?
+  validationErrors Json?
+  processingTimeMs Int?
+  error            String?
+  attempts         Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  startedAt        DateTime?
+  completedAt      DateTime?
+
+  @@index([status])
+  @@index([createdAt])
 }
