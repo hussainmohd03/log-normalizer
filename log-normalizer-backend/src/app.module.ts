@@ -3,13 +3,11 @@ import { IngestionModule } from './ingestion/ingestion.module';
 import { DatabaseModule } from './database/database.module';
 import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health/health.controller';
-import { NormalizationModule } from './normalization/normalization.module';
 import { RoutingModule } from './routing/routing.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { ReviewModule } from './review/review.module';
 import { SLMModule } from './slm/slm.module';
 import { JobsModule } from './jobs/jobs.module';
-import { NormalizeModule } from './normalize/normalize.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MetricsModule } from './metrics/metrics.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -24,14 +22,12 @@ import { APP_GUARD } from '@nestjs/core';
     }),
     IngestionModule,
     DatabaseModule,
-    NormalizationModule,
     RoutingModule,
     DeliveryModule,
     ReviewModule,
     SLMModule,
     MetricsModule,
     JobsModule,
-    NormalizeModule,
   ],
   controllers: [HealthController],
   providers: [

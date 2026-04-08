@@ -1,16 +1,14 @@
 import { Module } from '@nestjs/common';
-import { ReprocessJob } from './reprocess.service';
-import { NormalizationModule } from 'src/normalization/normalization.module';
-import { SQSRetryJob } from './sqs-retry.service';
 import { DeliveryModule } from 'src/delivery/delivery.module';
 import { JobsController } from './jobs.controller';
 import { JobsEventsService } from './jobs-events.service';
 import { JobsService } from './jobs.service';
+import { SQSRetryJob } from './sqs-retry.service';
 
 @Module({
-  imports: [NormalizationModule, DeliveryModule],
+  imports: [DeliveryModule],
   controllers: [JobsController],
-  providers: [ReprocessJob, SQSRetryJob, JobsService, JobsEventsService],
+  providers: [SQSRetryJob, JobsService, JobsEventsService],
   exports: [JobsService],
 })
 export class JobsModule {}
