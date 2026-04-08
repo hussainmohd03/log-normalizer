@@ -7,18 +7,12 @@ import type {
   PendingReview,
   CorrectionPayload,
   HealthStatus,
-  EnqueueResponse,
-  JobResponse,
-  NormalizeRequest,
 } from '../types'
 
 /* -- Config -- */
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 const API_KEY  = import.meta.env.VITE_API_KEY || ''
-
-export const apiBaseUrl = BASE_URL
-export const apiKey     = API_KEY
 
 /* -- Base fetch wrapper -- */
 
@@ -69,13 +63,4 @@ export const endpoints = {
 
   // Health
   health:       ()          => api<HealthStatus>('/health'),
-
-  // Normalize jobs
-  enqueueNormalize: (payload: NormalizeRequest) =>
-    api<EnqueueResponse>('/normalize', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  getJob: (id: string) => api<JobResponse>(`/normalize/jobs/${id}`),
-  jobEventsUrl: (id: string) => `${BASE_URL}/normalize/jobs/${id}/events`,
 }

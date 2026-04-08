@@ -2,7 +2,6 @@ import type { Page } from '../types'
 
 const NAV_ITEMS: { id: Page; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
-  { id: 'submit',    label: 'Submit log' },
   { id: 'review',    label: 'Review queue' },
   { id: 'metrics',   label: 'Metrics' },
   { id: 'health',    label: 'Health' },
