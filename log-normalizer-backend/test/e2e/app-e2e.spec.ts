@@ -54,18 +54,19 @@ describe('App E2E', () => {
   })
 
   // -- Ingestion --
-  it('POST /api/logs/ingest with valid body returns 202', async () => {
+  it('POST /api/logs/ingest with valid body returns 202 and a queued NormalizeJob', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/logs/ingest')
       .set('x-api-key', process.env.API_KEY!)
       .send({ source: 'crowdstrike', rawContent: { alert_id: '123' } })
       .expect(202)
 
-    expect(res.body.id).toBeDefined()
-    expect(res.body.status).toBe('accepted')
+    expect(res.body.jobId).toBeDefined()
+    expect(res.body.status).toBe('queued')
 
-    const stored = await prisma.rawLog.findUnique({ where: { id: res.body.id } })
+    const stored = await prisma.normalizeJob.findUnique({ where: { id: res.body.jobId } })
     expect(stored).not.toBeNull()
+    expect(stored!.source).toBe('crowdstrike')
   })
 
   // -- Validation --

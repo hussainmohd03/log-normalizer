@@ -5,6 +5,7 @@ import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
 import { CompleteNormalizeJobDto } from 'src/jobs/dto/complete-normalize-job.dto';
 import { JobsService } from 'src/jobs/jobs.service';
 import { NORMALIZE_QUEUE } from 'src/queue/queue-names';
+import { RoutingService } from 'src/routing/routing.service';
 import { SLMService } from 'src/slm/slm.service';
 
 interface NormalizeJobPayload {
@@ -33,6 +34,7 @@ export class NormalizeProcessor extends WorkerHost {
   constructor(
     private readonly jobsService: JobsService,
     private readonly slmService: SLMService,
+    private readonly routingService: RoutingService,
   ) {
     super();
   }
@@ -90,7 +92,24 @@ export class NormalizeProcessor extends WorkerHost {
       return;
     }
 
-    // Step 4 — write the success row.
+    // Step 4 — write downstream artifacts BEFORE marking the row
+    // COMPLETED. If routing fails (OCSFEvent insert, ManualReview write,
+    // SQS publish), we want the row to end FAILED with that error rather
+    // than COMPLETED with missing children. The contract becomes:
+    // status=COMPLETED ⟹ OCSFEvent + ProcessingMetric exist for this job.
+    try {
+      await this.routingService.route(row, response);
+    } catch (err) {
+      const message = (err as Error).message ?? 'routing failed';
+      this.logger.error(
+        { jobId, err: message, durationMs: Date.now() - startedAt },
+        'normalize.fail: routing threw',
+      );
+      await this.failQuietly(jobId, message);
+      return;
+    }
+
+    // Step 5 — write the success row.
     try {
       await this.jobsService.markCompleted(
         jobId,

@@ -1,76 +1,88 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { DECISION, NormalizeJob, PRIORITY } from 'generated/prisma/client';
+import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
+import { nonBlocking } from 'src/common/utils/non-blocking';
 import { PrismaService } from 'src/database/prisma.service';
 import { SQSClientService } from 'src/delivery/sqs-client.service';
 import { ReviewService } from 'src/review/review.service';
-import { nonBlocking } from 'src/common/utils/non-blocking';
-import { DECISION, PRIORITY, RawLog, STATUS } from 'generated/prisma/browser';
-import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
 
 @Injectable()
 export class RoutingService {
-  private readonly logger = new Logger(RoutingService.name)
+  private readonly logger = new Logger(RoutingService.name);
 
   constructor(
-    private prisma: PrismaService, 
-    private reviewService: ReviewService, 
-    private SQSClient: SQSClientService) {}
-  
+    private prisma: PrismaService,
+    private reviewService: ReviewService,
+    private SQSClient: SQSClientService,
+  ) {}
 
-  async route(rawLog: RawLog, slmResponse: SLMResponse) {
-    // run storeTransaction
-    await this.storeTransaction(rawLog, slmResponse)
+  /**
+   * Called by the worker after a successful SLM call. Writes the
+   * downstream artifacts (OCSFEvent + ProcessingMetric, optional
+   * ManualReview) and triggers the SQS publish for accept decisions.
+   *
+   * The NormalizeJob row's status is owned by the worker — this method
+   * does not touch it. If routing throws, the worker maps the failure
+   * onto markFailed.
+   */
+  async route(job: NormalizeJob, slmResponse: SLMResponse): Promise<void> {
+    await this.storeTransaction(job, slmResponse);
 
-    const decision = slmResponse.decision
-
-    // handle routing
-    switch (decision) {
+    switch (slmResponse.decision) {
       case 'accept':
-        await this.handleAccept(rawLog, slmResponse);
+        await this.handleAccept(job, slmResponse);
         break;
       case 'review':
-        await this.handleReview(rawLog, slmResponse, PRIORITY.NORMAL);
+        await this.handleReview(job, slmResponse, PRIORITY.NORMAL);
         break;
       case 'reject':
-        await this.handleReview(rawLog, slmResponse, PRIORITY.HIGH);
+        await this.handleReview(job, slmResponse, PRIORITY.HIGH);
         break;
       default:
-        this.logger.warn(`[${rawLog.id}] Unexpected decision: ${decision} — routing to HIGH review`);
-        await this.handleReview(rawLog, slmResponse, PRIORITY.HIGH);
+        this.logger.warn(
+          { jobId: job.id, decision: slmResponse.decision },
+          'routing.unknown_decision',
+        );
+        await this.handleReview(job, slmResponse, PRIORITY.HIGH);
     }
-  } 
+  }
 
-  private async handleAccept(rawLog: RawLog, slmResponse: SLMResponse){
+  private async handleAccept(job: NormalizeJob, slmResponse: SLMResponse): Promise<void> {
     const messageId = await nonBlocking(
       () => this.SQSClient.publish(slmResponse.ocsf!),
-      `${rawLog.source}/sqs`,
-      this.logger
-    )
+      `${job.source}/sqs`,
+      this.logger,
+    );
 
-    if(messageId) {
+    if (messageId) {
       await nonBlocking(
-        () => this.prisma.oCSFEvent.update({
-          where: { rawLogId: rawLog.id },
-          data: { publishedToSqs: true, sqsMessageId: messageId }
-        }),
-        `${rawLog.source}/sqs-track`,
-        this.logger
-      )
+        () =>
+          this.prisma.oCSFEvent.update({
+            where: { normalizeJobId: job.id },
+            data: { publishedToSqs: true, sqsMessageId: messageId },
+          }),
+        `${job.source}/sqs-track`,
+        this.logger,
+      );
     }
   }
 
-  private async handleReview(rawLog: RawLog, slmResponse: SLMResponse, priority: PRIORITY){
-    await this.reviewService.queue(rawLog, slmResponse, priority)
+  private async handleReview(
+    job: NormalizeJob,
+    slmResponse: SLMResponse,
+    priority: PRIORITY,
+  ): Promise<void> {
+    await this.reviewService.queue(job, slmResponse, priority);
   }
 
-  
-  private async storeTransaction(rawLog: RawLog, slmResponse: SLMResponse) {
-    const ops = [];
+  private async storeTransaction(job: NormalizeJob, slmResponse: SLMResponse): Promise<void> {
+    const ops: Promise<unknown>[] = [];
 
     if (slmResponse.ocsf) {
       ops.push(
         this.prisma.oCSFEvent.create({
           data: {
-            rawLogId: rawLog.id,
+            normalizeJobId: job.id,
             classUid: slmResponse.ocsf['class_uid'],
             className: slmResponse.ocsf['class_name'],
             activityId: slmResponse.ocsf['activity_id'],
@@ -82,41 +94,30 @@ export class RoutingService {
             processingTime: slmResponse.processing_time_ms,
           },
         }),
-      )
+      );
     }
 
     ops.push(
       this.prisma.processingMetric.create({
         data: {
-          source: rawLog.source,
+          source: job.source,
           confidence: slmResponse.confidence,
           decision: this.mapDecision(slmResponse.decision),
           latencyMs: slmResponse.processing_time_ms,
           success: slmResponse.decision === 'accept',
         },
       }),
-    )
+    );
 
-    ops.push(
-      this.prisma.rawLog.update({
-        where: { id: rawLog.id },
-        data: {
-          status: slmResponse.ocsf ? STATUS.PROCESSED : STATUS.FAILED,
-          processedAt: new Date(),
-          errorMessage: slmResponse.ocsf ? null : (slmResponse.error || 'No OCSF output produced'),
-        },
-      })
-    )
-
-    await this.prisma.$transaction(ops);
+    await this.prisma.$transaction(ops as never);
   }
-  
+
   private mapDecision(decision: string): DECISION {
-  const map: Record<string, DECISION> = {
-    'accept': DECISION.ACCEPT,
-    'review': DECISION.REVIEW,
-    'reject': DECISION.REJECT,
-  };
-  return map[decision] || DECISION.REJECT;
-}
+    const map: Record<string, DECISION> = {
+      accept: DECISION.ACCEPT,
+      review: DECISION.REVIEW,
+      reject: DECISION.REJECT,
+    };
+    return map[decision] || DECISION.REJECT;
+  }
 }

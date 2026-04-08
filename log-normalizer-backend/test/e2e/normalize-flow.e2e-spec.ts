@@ -33,7 +33,13 @@ import { SLMResponse } from 'src/common/interfaces/slm-response.interface'
 import { cleanDatabase } from 'test/helper/prisma-test'
 
 const SUCCESS_RESPONSE: SLMResponse = {
-  ocsf: { class_uid: 2004, type_uid: 200401 },
+  ocsf: {
+    class_uid: 2004,
+    class_name: 'Detection Finding',
+    activity_id: 1,
+    severity_id: 3,
+    type_uid: 200401,
+  },
   confidence: 0.92,
   processing_time_ms: 175,
   decision: 'accept',
@@ -47,9 +53,9 @@ const SUCCESS_RESPONSE: SLMResponse = {
 }
 
 const SAMPLE_PAYLOAD = {
-  rawLog: '{"alert_id":"e2e-1","severity":"high"}',
   source: 'crowdstrike',
   format: 'json',
+  rawContent: { alert_id: 'e2e-1', severity: 'high' },
 }
 
 interface JobResponseShape {
@@ -139,7 +145,7 @@ describe('Normalize async flow E2E', () => {
 
   const enqueue = async () => {
     const res = await request(httpApp.getHttpServer())
-      .post('/api/normalize')
+      .post('/api/logs/ingest')
       .set('x-api-key', process.env.API_KEY!)
       .send(SAMPLE_PAYLOAD)
       .expect(202)
@@ -181,10 +187,15 @@ describe('Normalize async flow E2E', () => {
     expect(final.error).toBeNull()
     expect(slmMock.normalize).toHaveBeenCalledTimes(1)
     expect(slmMock.normalize).toHaveBeenCalledWith({
-      raw_log: SAMPLE_PAYLOAD.rawLog,
+      raw_log: SAMPLE_PAYLOAD.rawContent,
       source: SAMPLE_PAYLOAD.source,
       format: SAMPLE_PAYLOAD.format,
     })
+
+    // Routing chain ran: OCSFEvent + ProcessingMetric exist for the job
+    const ocsf = await prisma.oCSFEvent.findUnique({ where: { normalizeJobId: jobId } })
+    expect(ocsf).not.toBeNull()
+    expect(ocsf!.confidence).toBeCloseTo(0.92)
   }, 30_000)
 
   it('SLM throws → worker marks the row FAILED with the error message', async () => {

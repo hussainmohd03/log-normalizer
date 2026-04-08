@@ -1,12 +1,13 @@
-import { Prisma, RawLog, STATUS } from "generated/prisma/browser";
+import { Prisma } from "generated/prisma/client";
 import { SLMResponse } from "src/common/interfaces/slm-response.interface";
 
-export function buildRawLog(overrides: Partial<Prisma.RawLogCreateInput> = {}): Prisma.RawLogCreateInput {
+export function buildNormalizeJob(
+  overrides: Partial<Prisma.NormalizeJobCreateInput> = {},
+): Prisma.NormalizeJobCreateInput {
   return {
     source: 'crowdstrike',
-    rawContent: { alert_id: 'test-123', severity: 'high' },
-    status: STATUS.PENDING,
     format: 'json',
+    rawLog: { alert_id: 'test-123', severity: 'high' },
     ...overrides,
   }
 }

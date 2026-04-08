@@ -1,45 +1,47 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { DECISION, PRIORITY, RawLog, STATUS } from 'generated/prisma/browser';
+import { DECISION, NormalizeJob, PRIORITY } from 'generated/prisma/client';
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
 import { PrismaService } from 'src/database/prisma.service';
 import { SLMService } from 'src/slm/slm.service';
 
 @Injectable()
 export class ReviewService {
-  private readonly logger = new Logger('ReviewService')
+  private readonly logger = new Logger(ReviewService.name);
 
-  constructor(private prisma: PrismaService, private slmService: SLMService){}
+  constructor(private prisma: PrismaService, private slmService: SLMService) {}
 
-  async queue(rawLog: RawLog, slmResponse: SLMResponse, priority: PRIORITY) {
-
+  async queue(job: NormalizeJob, slmResponse: SLMResponse, priority: PRIORITY): Promise<void> {
     await this.prisma.manualReview.create({
-        data: {
-        rawLogId: rawLog.id,
-        source: rawLog.source, 
-        slmOcsfOutput: slmResponse.ocsf as Record<string, any>, 
+      data: {
+        normalizeJobId: job.id,
+        source: job.source,
+        slmOcsfOutput: slmResponse.ocsf as Record<string, any>,
         confidence: slmResponse.confidence,
         confidenceBreakdown: slmResponse.breakdown as Record<string, any>,
         validationErrors: slmResponse.validation_errors as string[],
-        priority: priority,
-      }
-    })
+        priority,
+      },
+    });
 
-    this.logger.log(`[${rawLog.id}] Queued for review (${priority})`);
+    this.logger.log(
+      { jobId: job.id, priority },
+      'review.queued',
+    );
   }
-  
+
   async getPending(limit: number = 20) {
-    return await this.prisma.manualReview.findMany({
+    return this.prisma.manualReview.findMany({
       where: { reviewedAt: null },
       orderBy: [
-        { priority: 'desc' },      // HIGH before NORMAL
-        { confidence: 'asc' },     // lowest confidence first within same priority
+        { priority: 'desc' },  // HIGH before NORMAL
+        { confidence: 'asc' }, // lowest confidence first within same priority
       ],
       take: limit,
-      include: { rawLog: true },
-    })
+      include: { normalizeJob: true },
+    });
   }
 
-  async submitCorrection(reviewId: string, correctedOcsf: Record<string, any>, reviewer: string){ 
+  async submitCorrection(reviewId: string, correctedOcsf: Record<string, any>, reviewer: string) {
     const validation = await this.slmService.validate(correctedOcsf);
 
     if (!validation.valid) {
@@ -68,10 +70,10 @@ export class ReviewService {
         reviewedBy: reviewer,
         reviewedAt: new Date(),
       },
-    })
+    });
 
     await this.prisma.oCSFEvent.upsert({
-    where: { rawLogId: updated.rawLogId },
+      where: { normalizeJobId: updated.normalizeJobId },
       update: {
         ocsfJson: correctedOcsf,
         confidence: 1.0,
@@ -80,7 +82,7 @@ export class ReviewService {
         sqsMessageId: null,
       },
       create: {
-        rawLogId: updated.rawLogId,
+        normalizeJobId: updated.normalizeJobId,
         classUid: correctedOcsf['class_uid'],
         className: correctedOcsf['class_name'],
         activityId: correctedOcsf['activity_id'],
@@ -92,16 +94,7 @@ export class ReviewService {
         processingTime: 0,
         publishedToSqs: false,
       },
-    })
-
-    await this.prisma.rawLog.update({
-      where: { id: updated.rawLogId },
-      data: { 
-        status: STATUS.PROCESSED, 
-        processedAt: new Date() 
-      },
-    })
-
+    });
 
     return updated;
   }

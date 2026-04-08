@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DatabaseModule } from 'src/database/database.module';
 import { JobsService } from 'src/jobs/jobs.service';
 import { NORMALIZE_QUEUE } from 'src/queue/queue-names';
+import { RoutingModule } from 'src/routing/routing.module';
 import { SLMModule } from 'src/slm/slm.module';
 import { NormalizeProcessor } from './normalize.processor';
 
@@ -12,18 +13,20 @@ import { NormalizeProcessor } from './normalize.processor';
  * the processor needs:
  *  - DatabaseModule for PrismaService (transitively)
  *  - SLMModule for the HTTP client + circuit breaker
+ *  - RoutingModule for the OCSFEvent / ManualReview / SQS chain
  *  - BullModule for the queue connection
- *  - JobsService for the row CRUD (registered directly so we don't drag
- *    in legacy reprocess/sqs jobs from JobsModule)
+ *  - JobsService for the row CRUD
  *
- * This is intentionally NOT JobsModule — the worker process should boot
- * the smallest possible graph.
+ * Intentionally does NOT import JobsModule — that would drag in the
+ * legacy ReprocessJob/SQSRetryJob cron providers and the SSE
+ * controller, none of which the worker process needs.
  */
 @Module({
   imports: [
     ConfigModule,
     DatabaseModule,
     SLMModule,
+    RoutingModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

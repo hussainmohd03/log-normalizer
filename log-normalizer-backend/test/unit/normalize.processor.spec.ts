@@ -3,13 +3,14 @@ import { Job } from 'bullmq';
 import { JobStatus, NormalizeJob } from 'generated/prisma/client';
 import { SLMResponse } from '../../src/common/interfaces/slm-response.interface';
 import { JobsService } from '../../src/jobs/jobs.service';
+import { RoutingService } from '../../src/routing/routing.service';
 import { SLMService } from '../../src/slm/slm.service';
 import { NormalizeProcessor } from '../../src/worker/normalize.processor';
 
 const ROW: NormalizeJob = {
   id: 'a3f1c4e2-1234-4abc-9def-0123456789ab',
   status: JobStatus.ACTIVE,
-  rawLog: '{"alert":"x"}',
+  rawLog: { alert: 'x' },
   source: 'crowdstrike',
   format: 'json',
   ocsf: null,
@@ -52,6 +53,7 @@ describe('NormalizeProcessor', () => {
     markFailed: jest.Mock;
   };
   let mockSlm: { normalize: jest.Mock };
+  let mockRouting: { route: jest.Mock };
 
   beforeEach(async () => {
     mockJobs = {
@@ -60,12 +62,14 @@ describe('NormalizeProcessor', () => {
       markFailed: jest.fn().mockResolvedValue(ROW),
     };
     mockSlm = { normalize: jest.fn() };
+    mockRouting = { route: jest.fn().mockResolvedValue(undefined) };
 
     const module = await Test.createTestingModule({
       providers: [
         NormalizeProcessor,
         { provide: JobsService, useValue: mockJobs },
         { provide: SLMService, useValue: mockSlm },
+        { provide: RoutingService, useValue: mockRouting },
       ],
     }).compile();
 
@@ -102,12 +106,15 @@ describe('NormalizeProcessor', () => {
     expect(order).toEqual(['markActive', 'slm']);
   });
 
-  // ── 3. happy path → markCompleted with mapped payload ───────────────────
+  // ── 3. happy path → routing then markCompleted with mapped payload ─────
 
-  it('on SLM success calls markCompleted with the mapped result', async () => {
+  it('on SLM success calls routing.route, then markCompleted with the mapped result', async () => {
     mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
 
     await processor.process(makeJob(ROW.id));
+
+    expect(mockRouting.route).toHaveBeenCalledTimes(1);
+    expect(mockRouting.route).toHaveBeenCalledWith(ROW, SUCCESS_RESPONSE);
 
     expect(mockJobs.markCompleted).toHaveBeenCalledTimes(1);
     expect(mockJobs.markCompleted).toHaveBeenCalledWith(ROW.id, {
@@ -119,6 +126,44 @@ describe('NormalizeProcessor', () => {
       processingTimeMs: 175_000,
     });
     expect(mockJobs.markFailed).not.toHaveBeenCalled();
+  });
+
+  it('routing.route runs BEFORE markCompleted (so COMPLETED ⟹ children exist)', async () => {
+    const order: string[] = [];
+    mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
+    mockRouting.route.mockImplementationOnce(async () => {
+      order.push('routing');
+    });
+    mockJobs.markCompleted.mockImplementationOnce(async () => {
+      order.push('markCompleted');
+      return ROW;
+    });
+
+    await processor.process(makeJob(ROW.id));
+
+    expect(order).toEqual(['routing', 'markCompleted']);
+  });
+
+  it('routing.route throwing maps to markFailed and never calls markCompleted', async () => {
+    mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
+    mockRouting.route.mockRejectedValueOnce(new Error('routing exploded'));
+
+    await processor.process(makeJob(ROW.id));
+
+    expect(mockJobs.markFailed).toHaveBeenCalledWith(ROW.id, 'routing exploded');
+    expect(mockJobs.markCompleted).not.toHaveBeenCalled();
+  });
+
+  it('passes the row.rawLog object straight through to SLMService (not stringified)', async () => {
+    mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
+
+    await processor.process(makeJob(ROW.id));
+
+    expect(mockSlm.normalize).toHaveBeenCalledWith({
+      raw_log: ROW.rawLog, // object, not a string
+      source: ROW.source,
+      format: ROW.format,
+    });
   });
 
   // ── 4. SLM throws → markFailed, no partial result ───────────────────────
