@@ -7,4 +7,6 @@ export class CompleteNormalizeJobDto {
   breakdown: Prisma.InputJsonValue;
   validationErrors: Prisma.InputJsonValue;
   processingTimeMs: number;
+  fixesApplied!: Prisma.InputJsonValue;
+  hallucinationsStripped!: Prisma.InputJsonValue;
 }

@@ -105,29 +105,31 @@ enum JobStatus {
 }
 
 model NormalizeJob {
-  id               String         @id @default(uuid())
-  status           JobStatus      @default(QUEUED)
-  rawLog           Json
-  source           String
-  format           String
-  idempotencyKey   String?        @unique
-  parentJobId      String?
-  parent           NormalizeJob?  @relation("JobRetries", fields: [parentJobId], references: [id], onDelete: SetNull)
-  retries          NormalizeJob[] @relation("JobRetries")
-  ocsf             Json?
-  confidence       Float?
-  decision         String?
-  breakdown        Json?
-  validationErrors Json?
-  processingTimeMs Int?
-  error            String?
-  attempts         Int            @default(0)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  startedAt        DateTime?
-  completedAt      DateTime?
-  ocsfEvent        OCSFEvent?
-  manualReview     ManualReview?
+  id                     String         @id @default(uuid())
+  status                 JobStatus      @default(QUEUED)
+  rawLog                 Json
+  source                 String
+  format                 String
+  idempotencyKey         String?        @unique
+  parentJobId            String?
+  parent                 NormalizeJob?  @relation("JobRetries", fields: [parentJobId], references: [id], onDelete: SetNull)
+  retries                NormalizeJob[] @relation("JobRetries")
+  ocsf                   Json?
+  confidence             Float?
+  decision               String?
+  breakdown              Json?
+  validationErrors       Json?
+  processingTimeMs       Int?
+  error                  String?
+  fixesApplied           Json?
+  hallucinationsStripped Json?
+  attempts               Int            @default(0)
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  startedAt              DateTime?
+  completedAt            DateTime?
+  ocsfEvent              OCSFEvent?
+  manualReview           ManualReview?
 
   @@index([status])
   @@index([createdAt])

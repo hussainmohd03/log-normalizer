@@ -16,6 +16,8 @@ const BASE: NormalizeJob = {
   validationErrors: null,
   processingTimeMs: null,
   error: null,
+  fixesApplied: null,
+  hallucinationsStripped: null,
   attempts: 0,
   createdAt: new Date('2026-04-08T10:00:00.000Z'),
   updatedAt: new Date('2026-04-08T10:00:00.000Z'),
@@ -90,6 +92,47 @@ describe('toJobResponse', () => {
       validationErrors: [],
       processingTimeMs: 175_000,
     });
+  });
+
+  it('fixesApplied and hallucinationsStripped default to empty arrays when row is null', () => {
+    const out = toJobResponse(BASE);
+    expect(out.fixesApplied).toEqual([]);
+    expect(out.hallucinationsStripped).toEqual([]);
+  });
+
+  it('fixesApplied is forwarded as a string array when present', () => {
+    const row: NormalizeJob = {
+      ...BASE,
+      fixesApplied: [
+        'moved finding_info.severity_id to root',
+        'forced metadata.version to 1.7.0',
+      ],
+    };
+    const out = toJobResponse(row);
+    expect(out.fixesApplied).toEqual([
+      'moved finding_info.severity_id to root',
+      'forced metadata.version to 1.7.0',
+    ]);
+  });
+
+  it('hallucinationsStripped is forwarded as a string array when present', () => {
+    const row: NormalizeJob = {
+      ...BASE,
+      hallucinationsStripped: ['stripped hallucinated device.hostname (looks like email): x@y.z'],
+    };
+    const out = toJobResponse(row);
+    expect(out.hallucinationsStripped).toEqual([
+      'stripped hallucinated device.hostname (looks like email): x@y.z',
+    ]);
+  });
+
+  it('mapper drops non-string entries defensively', () => {
+    const row: NormalizeJob = {
+      ...BASE,
+      fixesApplied: ['valid', 42, null, { not: 'string' }] as never,
+    };
+    const out = toJobResponse(row);
+    expect(out.fixesApplied).toEqual(['valid']);
   });
 
   it('parentJobId is forwarded from the row when set', () => {

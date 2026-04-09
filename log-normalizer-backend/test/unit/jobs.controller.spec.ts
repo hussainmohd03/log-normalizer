@@ -23,6 +23,8 @@ const ROW: NormalizeJob = {
   validationErrors: null,
   processingTimeMs: null,
   error: null,
+  fixesApplied: null,
+  hallucinationsStripped: null,
   attempts: 0,
   createdAt: new Date('2026-04-08T10:00:00.000Z'),
   updatedAt: new Date('2026-04-08T10:00:00.000Z'),

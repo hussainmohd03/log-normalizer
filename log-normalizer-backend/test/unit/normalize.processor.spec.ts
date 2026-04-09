@@ -22,6 +22,8 @@ const ROW: NormalizeJob = {
   validationErrors: null,
   processingTimeMs: null,
   error: null,
+  fixesApplied: null,
+  hallucinationsStripped: null,
   attempts: 0,
   createdAt: new Date('2026-04-08T10:00:00.000Z'),
   updatedAt: new Date('2026-04-08T10:00:01.000Z'),
@@ -144,6 +146,8 @@ describe('NormalizeProcessor', () => {
       breakdown: SUCCESS_RESPONSE.breakdown,
       validationErrors: [],
       processingTimeMs: 175_000,
+      fixesApplied: [],
+      hallucinationsStripped: [],
     });
     expect(mockJobs.markFailed).not.toHaveBeenCalled();
   });
@@ -315,6 +319,63 @@ describe('NormalizeProcessor.isSlmFailure', () => {
     expect(
       NormalizeProcessor.isSlmFailure({ ...SUCCESS_RESPONSE, error: 'x' }),
     ).toBe(true);
+  });
+});
+
+describe('NormalizeProcessor passes post-process audit trail', () => {
+  let processor: NormalizeProcessor;
+  let mockJobs: { markActive: jest.Mock; markCompleted: jest.Mock; markFailed: jest.Mock };
+  let mockSlm: { normalize: jest.Mock };
+  let mockRouting: { route: jest.Mock };
+
+  beforeEach(async () => {
+    mockJobs = {
+      markActive: jest.fn().mockResolvedValue(ROW),
+      markCompleted: jest.fn().mockResolvedValue(ROW),
+      markFailed: jest.fn().mockResolvedValue(ROW),
+    };
+    mockSlm = { normalize: jest.fn() };
+    mockRouting = { route: jest.fn().mockResolvedValue(undefined) };
+
+    const module = await Test.createTestingModule({
+      providers: [
+        NormalizeProcessor,
+        { provide: JobsService, useValue: mockJobs },
+        { provide: SLMService, useValue: mockSlm },
+        { provide: RoutingService, useValue: mockRouting },
+      ],
+    }).compile();
+
+    processor = module.get(NormalizeProcessor);
+  });
+
+  it('forwards fixes_applied and hallucinations_stripped from SLM to markCompleted', async () => {
+    mockSlm.normalize.mockResolvedValueOnce({
+      ...SUCCESS_RESPONSE,
+      fixes_applied: ['moved finding_info.severity_id to root', 'forced metadata.version to 1.7.0'],
+      hallucinations_stripped: ['stripped hallucinated device.hostname (looks like email): x@y.z'],
+    });
+
+    await processor.process(makeJob(ROW.id));
+
+    const arg = mockJobs.markCompleted.mock.calls[0][1];
+    expect(arg.fixesApplied).toEqual([
+      'moved finding_info.severity_id to root',
+      'forced metadata.version to 1.7.0',
+    ]);
+    expect(arg.hallucinationsStripped).toEqual([
+      'stripped hallucinated device.hostname (looks like email): x@y.z',
+    ]);
+  });
+
+  it('defaults to empty arrays when SLM omits the post-process fields', async () => {
+    mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
+
+    await processor.process(makeJob(ROW.id));
+
+    const arg = mockJobs.markCompleted.mock.calls[0][1];
+    expect(arg.fixesApplied).toEqual([]);
+    expect(arg.hallucinationsStripped).toEqual([]);
   });
 });
 

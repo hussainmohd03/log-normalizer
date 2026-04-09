@@ -20,6 +20,8 @@ const SOURCE: NormalizeJob = {
   validationErrors: null,
   processingTimeMs: null,
   error: 'circuit open (attempt 3/3)',
+  fixesApplied: null,
+  hallucinationsStripped: null,
   attempts: 3,
   createdAt: new Date('2026-04-08T10:00:00Z'),
   updatedAt: new Date('2026-04-08T10:01:00Z'),

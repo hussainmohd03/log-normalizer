@@ -21,6 +21,8 @@ const SAMPLE_RESULT: CompleteNormalizeJobDto = {
   breakdown: { field_coverage: 0.95 },
   validationErrors: [],
   processingTimeMs: 3200,
+  fixesApplied: [],
+  hallucinationsStripped: [],
 };
 
 describe('JobsService', () => {

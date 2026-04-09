@@ -29,20 +29,7 @@ export class JobsService {
     return this.prisma.normalizeJob.findUnique({ where: { idempotencyKey: key } });
   }
 
-  /**
-   * Claims a job for processing. Idempotent across BullMQ retries:
-   *  - First call (status=QUEUED): transitions to ACTIVE, sets startedAt,
-   *    increments attempts to 1.
-   *  - Retry call (status=ACTIVE): leaves status, bumps startedAt to "now"
-   *    (the latest attempt's start), increments attempts.
-   *
-   * Throws only if the row is missing or in a terminal state (COMPLETED
-   * or FAILED) — those mean a sweep raced us, and the worker should ack
-   * the BullMQ job and move on.
-   *
-   * The WHERE-clause IS the race guard: a single atomic UPDATE that
-   * cannot collide with a worker on a different attempt or a sweep.
-   */
+
   async markActive(id: string): Promise<NormalizeJob> {
     const { count } = await this.prisma.normalizeJob.updateMany({
       where: { id, status: { in: ['QUEUED', 'ACTIVE'] } },
@@ -60,11 +47,6 @@ export class JobsService {
     return this.prisma.normalizeJob.findUniqueOrThrow({ where: { id } });
   }
 
-  /**
-   * Precondition: job must be in ACTIVE state.
-   * Writes the full result payload atomically with the status transition.
-   * Returns the updated row so the caller can log or forward it.
-   */
   async markCompleted(
     id: string,
     result: CompleteNormalizeJobDto,
@@ -80,6 +62,8 @@ export class JobsService {
         breakdown: result.breakdown,
         validationErrors: result.validationErrors,
         processingTimeMs: result.processingTimeMs,
+        fixesApplied: result.fixesApplied,
+        hallucinationsStripped: result.hallucinationsStripped,
       },
     });
 
@@ -92,11 +76,7 @@ export class JobsService {
     return this.prisma.normalizeJob.findUniqueOrThrow({ where: { id } });
   }
 
-  /**
-   * Precondition: job must be in ACTIVE state.
-   * Stores the error message and sets completedAt so the row has a closed
-   * timestamp regardless of outcome.
-   */
+
   async markFailed(id: string, error: string): Promise<NormalizeJob> {
     const { count } = await this.prisma.normalizeJob.updateMany({
       where: { id, status: 'ACTIVE' },
@@ -116,10 +96,7 @@ export class JobsService {
     return this.prisma.normalizeJob.findUniqueOrThrow({ where: { id } });
   }
 
-  /**
-   * Best-effort cleanup used in the enqueue error path.
-   * Never throws — a failure here must not mask the original error.
-   */
+
   async deleteQuietly(id: string): Promise<void> {
     try {
       await this.prisma.normalizeJob.delete({ where: { id } });
