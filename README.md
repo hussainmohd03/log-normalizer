@@ -145,6 +145,8 @@ These are documented gaps deferred to Week 3+:
 - **No account lockout** after N failed login attempts.
 - **No 2FA / MFA.**
 - **No user management UI.** Add users via the bootstrap env vars or `psql`.
+- **Training data export is admin-only and atomic.** Analyst corrections are exported as JSONL training data via the admin training data page (`Training data` in the sidebar). Each export records the rows it claimed in a `TrainingExport` audit row, so re-exports do not include previously-exported corrections.
+- **Human-initiated correction (browsing accepted jobs and flagging them for review) is a Week 4+ enhancement.** Today, only jobs the SLM routes to manual review can be corrected; high-confidence accepts cannot be re-opened from the UI.
 - **`SameSite=strict` cookies require same-origin frontend + backend in production.** If you ever host the UI on a different origin (e.g. Vercel + a separate API host), switch the cookie to `SameSite=lax` and add CSRF tokens.
 - **Standard SQS queue**, not FIFO — retries may publish duplicate downstream events. Switch the SQS URL to a `.fifo` queue and the dedup id (already plumbed) takes effect with zero code changes.
 - **No retries beyond BullMQ's `attempts: 3`**. If the SLM is down for >2 minutes, the reconciliation sweep handles stragglers.
