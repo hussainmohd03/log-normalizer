@@ -6,6 +6,7 @@ import Health from './pages/Health'
 import Login from './pages/Login'
 import Metrics from './pages/Metrics'
 import ReviewQueue from './pages/ReviewQueue'
+import TrainingData from './pages/TrainingData'
 import Users from './pages/Users'
 import type { Page } from './types'
 
@@ -24,6 +25,7 @@ const AppShell = () => {
       {page === 'metrics' && <Metrics />}
       {page === 'health' && <Health />}
       {page === 'users' && <Users />}
+      {page === 'training-data' && <TrainingData />}
     </Layout>
   )
 }

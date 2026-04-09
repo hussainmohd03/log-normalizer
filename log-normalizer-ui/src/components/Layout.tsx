@@ -12,7 +12,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'review',    label: 'Review queue' },
   { id: 'metrics',   label: 'Metrics' },
   { id: 'health',    label: 'Health' },
-  { id: 'users',     label: 'User management', requiresRole: 'ADMIN' },
+  { id: 'users',         label: 'User management', requiresRole: 'ADMIN' },
+  { id: 'training-data', label: 'Training data',   requiresRole: 'ADMIN' },
 ]
 
 interface LayoutProps {

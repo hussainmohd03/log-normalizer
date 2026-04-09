@@ -9,6 +9,7 @@ import type {
   ReviewQueueInfo,
   SourceMetric,
   TimelinePoint,
+  TrainingDataStats,
   User,
 } from '../types'
 
@@ -103,5 +104,26 @@ export const endpoints = {
       }),
     delete: (id: string) =>
       api<void>(`/users/${id}`, { method: 'DELETE' }),
+  },
+
+  // Training data export (admin only)
+  trainingData: {
+    stats: () => api<TrainingDataStats>('/admin/training-data/stats'),
+    // Returns the raw Response so the caller can read headers
+    // (Content-Disposition / X-Record-Count) and stream the body into a
+    // downloadable Blob. Bypasses the JSON-parsing wrapper on purpose —
+    // the response is NDJSON, not JSON.
+    export: async (): Promise<Response> => {
+      const res = await fetch(`${BASE_URL}/admin/training-data/export`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (res.status === 401) throw new UnauthorizedError()
+      if (!res.ok) {
+        const body = await res.text().catch(() => '')
+        throw new ApiError(res.status, body || res.statusText)
+      }
+      return res
+    },
   },
 }

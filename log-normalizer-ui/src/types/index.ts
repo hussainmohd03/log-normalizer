@@ -1,6 +1,6 @@
 /* -- Navigation -- */
 
-export type Page = 'dashboard' | 'review' | 'metrics' | 'health' | 'users'
+export type Page = 'dashboard' | 'review' | 'metrics' | 'health' | 'users' | 'training-data'
 
 /* -- Auth -- */
 
@@ -81,6 +81,10 @@ export interface ConfidenceBreakdown {
   schema_validity: number
   field_coverage: number
   value_consistency: number
+  // Negative deduction applied by the post-processor (one per stripped
+  // hallucination, capped at -0.30). Absent on reviews queued before the
+  // post-processor shipped.
+  post_process_penalty?: number
 }
 
 export interface PendingReview {
@@ -102,7 +106,26 @@ export interface PendingReview {
     id: string
     rawLog: Record<string, unknown>
     source: string
+    fixesApplied: string[] | null
+    hallucinationsStripped: string[] | null
   }
+}
+
+/* -- Training data export -- */
+
+export interface TrainingExportRecord {
+  id: string
+  exportedAt: string
+  exportedByEmail: string
+  recordCount: number
+}
+
+export interface TrainingDataStats {
+  totalCorrections: number
+  pendingExport: number
+  alreadyExported: number
+  lastExportAt: string | null
+  exportHistory: TrainingExportRecord[]
 }
 
 export interface CorrectionPayload {
