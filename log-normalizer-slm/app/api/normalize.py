@@ -62,6 +62,7 @@ def _sync_normalize(req: NormalizeRequest) -> NormalizeResponse:
             raw_dict, clean_ocsf, req.source,
             validation_errors=validation.errors,
             validation_warnings=validation.warnings,
+            hallucinations_stripped=post_result.hallucinations_stripped,
         )
         processing_time_ms = int((time.time() - start_time) * 1000)
 

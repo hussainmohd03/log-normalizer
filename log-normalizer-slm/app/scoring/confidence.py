@@ -29,18 +29,24 @@ class ConfidenceResult:
         self.validation_errors = validation_errors or []
 
 
+_POST_PROCESS_PENALTY_PER_HALLUCINATION = 0.10
+_POST_PROCESS_PENALTY_CAP = 0.30
+
+
 def compute_confidence(
     raw_input: dict,
     ocsf_output: dict,
     source: str,
     validation_errors: list[str] | None = None,
     validation_warnings: list[str] | None = None,
+    hallucinations_stripped: list[str] | None = None,
 ) -> ConfidenceResult:
     """
-    Composite score from three signals:
+    Composite score from three signals plus a post-process penalty:
       schema_validity   (0.40) — required fields present + penalty for warnings/errors
       field_coverage    (0.30) — how many expected fields are populated
       value_consistency (0.30) — do output values exist in the input
+      post_process_penalty   — 0.10 per hallucination stripped, capped at 0.30
     """
     schema_score = _score_schema(ocsf_output, validation_errors or [], validation_warnings or [])
 
@@ -51,36 +57,41 @@ def compute_confidence(
     consistent = sum(1 for v in values_to_check if str(v) in raw_str)
     consistency_score = consistent / len(values_to_check) if values_to_check else 0.5
 
-    # Composite
-    score = (
+    composite = (
         0.40 * schema_score +
         0.30 * coverage_score +
         0.30 * consistency_score
     )
 
-    # Decision
-    if score >= settings.accept_threshold:
+    penalty = min(
+        _POST_PROCESS_PENALTY_CAP,
+        _POST_PROCESS_PENALTY_PER_HALLUCINATION * len(hallucinations_stripped or []),
+    )
+    final_score = max(0.0, min(1.0, composite - penalty))
+
+    if final_score >= settings.accept_threshold:
         decision = "accept"
-    elif score >= settings.review_threshold:
+    elif final_score >= settings.review_threshold:
         decision = "review"
     else:
         decision = "reject"
 
     logger.info(
         "[%s] Confidence: %.3f (schema=%.2f, coverage=%.2f, "
-        "consistency=%.2f [%d/%d]) → %s",
-        source, score, schema_score,
+        "consistency=%.2f [%d/%d], penalty=-%.2f) → %s",
+        source, final_score, schema_score,
         coverage_score, consistency_score,
         consistent, len(values_to_check),
-        decision,
+        penalty, decision,
     )
 
     return ConfidenceResult(
-        score=round(score, 3),
+        score=round(final_score, 3),
         breakdown={
             "schema_validity": round(schema_score, 3),
             "field_coverage": round(coverage_score, 3),
             "value_consistency": round(consistency_score, 3),
+            "post_process_penalty": -round(penalty, 3),
         },
         decision=decision,
         validation_errors=(validation_errors or []) + (validation_warnings or []),
