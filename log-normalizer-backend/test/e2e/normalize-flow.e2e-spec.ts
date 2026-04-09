@@ -70,6 +70,8 @@ interface JobResponseShape {
   parentJobId: string | null
   result: { decision: string; confidence: number } | null
   error: string | null
+  fixesApplied: string[]
+  hallucinationsStripped: string[]
 }
 
 describe('Normalize async flow E2E', () => {
@@ -240,6 +242,40 @@ describe('Normalize async flow E2E', () => {
     expect(sqsMock.publish).toHaveBeenCalledWith(SUCCESS_RESPONSE.ocsf, jobId)
     expect(ocsf!.publishedToSqs).toBe(true)
     expect(ocsf!.sqsMessageId).toBe('mock-msg-id')
+  }, 30_000)
+
+  it('post-processor audit trail survives the full pipeline and is exposed via GET', async () => {
+    slmMock.normalize.mockResolvedValueOnce({
+      ...SUCCESS_RESPONSE,
+      fixes_applied: [
+        'moved finding_info.severity_id to root',
+        'forced metadata.version to 1.7.0',
+      ],
+      hallucinations_stripped: [
+        'stripped hallucinated device.hostname (looks like email): user@example.com',
+      ],
+    })
+
+    const jobId = await enqueue()
+    const final = await waitForTerminal(jobId)
+
+    expect(final.status).toBe('COMPLETED')
+    expect(final.fixesApplied).toEqual([
+      'moved finding_info.severity_id to root',
+      'forced metadata.version to 1.7.0',
+    ])
+    expect(final.hallucinationsStripped).toEqual([
+      'stripped hallucinated device.hostname (looks like email): user@example.com',
+    ])
+
+    const row = await prisma.normalizeJob.findUniqueOrThrow({ where: { id: jobId } })
+    expect(row.fixesApplied).toEqual([
+      'moved finding_info.severity_id to root',
+      'forced metadata.version to 1.7.0',
+    ])
+    expect(row.hallucinationsStripped).toEqual([
+      'stripped hallucinated device.hostname (looks like email): user@example.com',
+    ])
   }, 30_000)
 
   it('SLM throws on all 3 attempts → worker marks the row FAILED with attempt count', async () => {
