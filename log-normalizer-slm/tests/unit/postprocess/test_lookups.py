@@ -4,9 +4,6 @@ from app.postprocess.lookups.observable_types import lookup_observable_type
 from app.postprocess.lookups.vendors import lookup_vendor
 
 
-# ── observable_types ────────────────────────────────────────────────────
-
-
 def test_observable_lookup_canonical_name_match():
     result = lookup_observable_type("IP Address")
     assert result == (ObservableTypeId.IP_ADDRESS.value, "IP Address")
@@ -36,14 +33,10 @@ def test_observable_lookup_empty_returns_none():
 
 
 def test_observable_lookup_covers_every_enum_member():
-    """Regression guard: every member of ObservableTypeId must resolve."""
     for member in ObservableTypeId:
         canonical_hit = lookup_observable_type(member.name)
         assert canonical_hit is not None, f"missing canonical entry for {member.name}"
         assert canonical_hit[0] == member.value
-
-
-# ── mitre tables ────────────────────────────────────────────────────────
 
 
 def test_mitre_techniques_contains_known_ids():
@@ -58,9 +51,6 @@ def test_mitre_tactics_renames_preattack_to_reconnaissance():
 def test_mitre_tables_have_no_duplicate_ids():
     assert len(MITRE_TECHNIQUES) == len(set(MITRE_TECHNIQUES.keys()))
     assert len(MITRE_TACTICS) == len(set(MITRE_TACTICS.keys()))
-
-
-# ── vendors ─────────────────────────────────────────────────────────────
 
 
 def test_vendor_lookup_known_source():

@@ -1,14 +1,3 @@
-"""PostProcessor pipeline.
-
-Runs the five stages in order on a parsed OCSF dict, mutating in place,
-and returns a PostProcessResult containing the cleaned dict plus the
-audit trail of fixes and stripped hallucinations.
-
-Each stage is dispatched to a small `run_*_rules` function in
-``app.postprocess.rules.*``. The pipeline does not know what individual
-rules do — it just collects their RuleResults and merges them.
-"""
-
 import copy
 import logging
 from typing import Any
@@ -31,7 +20,6 @@ class PostProcessor:
         raw_alert: dict[str, Any],
         source: str,
     ) -> PostProcessResult:
-        # Deep-copy so the caller's parsed OCSF dict is not mutated.
         cleaned = copy.deepcopy(ocsf)
         result = PostProcessResult(cleaned_ocsf=cleaned)
 

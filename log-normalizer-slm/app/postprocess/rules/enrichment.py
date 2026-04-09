@@ -1,5 +1,3 @@
-"""Stage 3 rules: enrichment (require the raw alert and source vendor)."""
-
 from typing import Any
 
 from app.postprocess.result import RuleResult

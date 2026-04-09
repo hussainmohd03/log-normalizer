@@ -1,18 +1,8 @@
-"""Lookup table for OCSF observable types.
-
-The single source of truth for observable type ids is
-``app.ocsf.enums.ObservableTypeId``. This module derives a name->id and
-canonical-name table from that enum so we never duplicate the values.
-"""
-
 from typing import Optional
 
 from app.ocsf.enums import ObservableTypeId
 
 
-# Canonical OCSF observable type names, indexed by the IntEnum member name.
-# Keep this list in lockstep with ObservableTypeId — every member needs an
-# entry. The unit test asserts that.
 _CANONICAL_NAMES: dict[str, str] = {
     "UNKNOWN": "Unknown",
     "HOSTNAME": "Hostname",
@@ -68,10 +58,6 @@ _CANONICAL_NAMES: dict[str, str] = {
 
 
 def _build_lookup() -> dict[str, tuple[int, str]]:
-    """Build a case-insensitive lookup keyed by lowercase canonical name,
-    plus the lowercase enum-style name as an alias. Returns
-    {key: (type_id, canonical_name)}.
-    """
     table: dict[str, tuple[int, str]] = {}
     for member in ObservableTypeId:
         canonical = _CANONICAL_NAMES[member.name]
@@ -85,13 +71,6 @@ _LOOKUP = _build_lookup()
 
 
 def lookup_observable_type(name: str) -> Optional[tuple[int, str]]:
-    """Resolve an LLM-emitted type name to (type_id, canonical_name).
-
-    Accepts both canonical OCSF names ("IP Address") and enum-style
-    names ("IP_ADDRESS"), case-insensitive. Returns None when the name
-    is unknown so the caller can decide whether to drop the field or
-    fall back to UNKNOWN.
-    """
     if not name:
         return None
     return _LOOKUP.get(name.strip().lower())

@@ -1,5 +1,3 @@
-"""Stage 2 rules: type and value fixes (no raw alert needed)."""
-
 from typing import Any
 
 from app.postprocess.result import RuleResult

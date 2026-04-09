@@ -1,9 +1,3 @@
-"""Minimal MITRE ATT&CK lookup for techniques and tactics we have actually
-seen in training data or model outputs. Unknown ids are left alone by the
-post-processor (logged as warnings, not stripped).
-"""
-
-
 MITRE_TECHNIQUES: dict[str, str] = {
     "T1016": "System Network Configuration Discovery",
     "T1021.004": "Remote Services: SSH",
@@ -35,7 +29,5 @@ MITRE_TACTICS: dict[str, str] = {
     "TA0011": "Command and Control",
     "TA0040": "Impact",
     "TA0042": "Resource Development",
-    # MITRE renamed PreAttack to Reconnaissance in 2020. The model still
-    # produces the old name; Rule 14 normalizes both via this entry.
     "TA0043": "Reconnaissance",
 }

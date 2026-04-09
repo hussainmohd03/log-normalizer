@@ -1,5 +1,3 @@
-"""Stage 4 rules: MITRE ATT&CK technique and tactic name normalization."""
-
 from typing import Any
 
 from app.postprocess.result import RuleResult

@@ -3,8 +3,8 @@ from app.utils.prompt_builder import build_prompt
 
 def test_prompt_without_examples_contains_source():
     result = build_prompt(raw_log="test log", source="palo-alto", format="json")
-    system_msg = result[0]["content"]
-    assert "palo-alto" in system_msg
+    user_msg = result[-1]["content"]
+    assert "palo-alto" in user_msg
 
 def test_prompt_without_examples_contains_rawlog():
     result = build_prompt(raw_log="test log", source="palo-alto", format="json")
