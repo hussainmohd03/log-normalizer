@@ -25,13 +25,14 @@ enum UserRole {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String
-  role         UserRole  @default(ANALYST)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  lastLoginAt  DateTime?
+  id              String           @id @default(uuid())
+  email           String           @unique
+  passwordHash    String
+  role            UserRole         @default(ANALYST)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lastLoginAt     DateTime?
+  trainingExports TrainingExport[]
 }
 
 model OCSFEvent {
@@ -63,24 +64,37 @@ enum PRIORITY {
 }
 
 model ManualReview {
-  id                  String       @id @default(uuid())
-  normalizeJobId      String       @unique
-  normalizeJob        NormalizeJob @relation(fields: [normalizeJobId], references: [id], onDelete: Cascade)
+  id                  String          @id @default(uuid())
+  normalizeJobId      String          @unique
+  normalizeJob        NormalizeJob    @relation(fields: [normalizeJobId], references: [id], onDelete: Cascade)
   source              String
   slmOcsfOutput       Json
   confidence          Float
   confidenceBreakdown Json?
   validationErrors    Json?
-  priority            PRIORITY     @default(NORMAL)
-  queuedAt            DateTime     @default(now())
+  priority            PRIORITY        @default(NORMAL)
+  queuedAt            DateTime        @default(now())
   reviewedAt          DateTime?
   reviewedBy          String?
   correctedOCSF       Json?
-  exportedForTraining Boolean      @default(false)
+  trainingExportId    String?
+  trainingExport      TrainingExport? @relation(fields: [trainingExportId], references: [id], onDelete: SetNull)
 
   @@index([queuedAt])
   @@index([reviewedAt])
   @@index([priority, queuedAt])
+  @@index([trainingExportId])
+}
+
+model TrainingExport {
+  id           String         @id @default(uuid())
+  exportedAt   DateTime       @default(now())
+  exportedById String
+  exportedBy   User           @relation(fields: [exportedById], references: [id])
+  recordCount  Int
+  reviews      ManualReview[]
+
+  @@index([exportedAt])
 }
 
 model ProcessingMetric {

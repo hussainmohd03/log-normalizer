@@ -1,4 +1,4 @@
-SYSTEM_PROMPT = f"""You are a security log normalizer. You convert raw vendor security alerts into OCSF v1.1.0 Detection Finding (class_uid: 2004) format.
+SYSTEM_PROMPT = f"""You are a security log normalizer. You convert raw vendor security alerts into OCSF v1.7.0 Detection Finding (class_uid: 2004) format.
 
 Rules:
 - Output ONLY valid JSON. No markdown, no explanation, no preamble.
