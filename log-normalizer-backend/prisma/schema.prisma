@@ -96,6 +96,9 @@ model NormalizeJob {
   source           String
   format           String
   idempotencyKey   String?        @unique
+  parentJobId      String?
+  parent           NormalizeJob?  @relation("JobRetries", fields: [parentJobId], references: [id], onDelete: SetNull)
+  retries          NormalizeJob[] @relation("JobRetries")
   ocsf             Json?
   confidence       Float?
   decision         String?
@@ -109,8 +112,9 @@ model NormalizeJob {
   startedAt        DateTime?
   completedAt      DateTime?
   ocsfEvent        OCSFEvent?
-  manualReviews    ManualReview[]
+  manualReview     ManualReview?
 
   @@index([status])
   @@index([createdAt])
+  @@index([parentJobId])
 }
