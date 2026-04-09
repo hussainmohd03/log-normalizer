@@ -1,5 +1,3 @@
-// TODO(nav): wire `users` into Layout.tsx NAV_ITEMS (admin only)
-// and add { page === 'users' && <Users /> } to App.tsx routing.
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../api/auth'
 import { ApiError, endpoints } from '../api/client'

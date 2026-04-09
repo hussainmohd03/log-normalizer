@@ -1,11 +1,18 @@
 import { useAuth } from '../api/auth'
-import type { Page } from '../types'
+import type { Page, UserRole } from '../types'
 
-const NAV_ITEMS: { id: Page; label: string }[] = [
+interface NavItem {
+  id: Page
+  label: string
+  requiresRole?: UserRole
+}
+
+const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'review',    label: 'Review queue' },
   { id: 'metrics',   label: 'Metrics' },
   { id: 'health',    label: 'Health' },
+  { id: 'users',     label: 'User management', requiresRole: 'ADMIN' },
 ]
 
 interface LayoutProps {
@@ -16,6 +23,10 @@ interface LayoutProps {
 
 const Layout = ({ activePage, onNavigate, children }: LayoutProps) => {
   const { user, logout } = useAuth()
+
+  const visibleNavItems = NAV_ITEMS.filter(
+    (item) => !item.requiresRole || item.requiresRole === user?.role,
+  )
 
   return (
     <div className="layout">
@@ -29,7 +40,7 @@ const Layout = ({ activePage, onNavigate, children }: LayoutProps) => {
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map(({ id, label }) => (
+          {visibleNavItems.map(({ id, label }) => (
             <button
               key={id}
               className={`nav-item ${activePage === id ? 'nav-item--active' : ''}`}
