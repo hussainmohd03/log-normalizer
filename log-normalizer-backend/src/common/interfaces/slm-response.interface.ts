@@ -10,4 +10,6 @@ export interface SLMResponse {
   } | null
   validation_errors: string[] | null
   error: string | null
+  fixes_applied?: string[]
+  hallucinations_stripped?: string[]
 }

@@ -11,17 +11,27 @@ from app.utils.prompt_builder import build_prompt
 from app.utils.ocsf_parser import extract_json
 from app.scoring.confidence import compute_confidence
 from app.ocsf.validator import validate_ocsf
+from app.postprocess import PostProcessor
 from app.schemas.request import NormalizeRequest, ValidateRequest
 from app.schemas.response import NormalizeResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Final safety net for catastrophic inference hangs. Concurrency control
-# now lives in the BullMQ worker (concurrency=1) — this service trusts
-# the caller to serialize requests and only enforces an upper bound so a
-# wedged generation cannot pin the GPU forever.
 _INFERENCE_TIMEOUT_SECONDS = 600
+_post_processor = PostProcessor()
+
+
+def _parse_raw_dict(raw_log) -> dict:
+    if isinstance(raw_log, dict):
+        return raw_log
+    try:
+        parsed = json.loads(raw_log)
+        if isinstance(parsed, dict):
+            return parsed
+        return {"raw": raw_log}
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return {"raw": raw_log}
 
 
 def _sync_normalize(req: NormalizeRequest) -> NormalizeResponse:
@@ -41,18 +51,14 @@ def _sync_normalize(req: NormalizeRequest) -> NormalizeResponse:
                 error="JSON extraction failed",
             )
 
-        validation = validate_ocsf(ocsf, source=req.source)
-        clean_ocsf = validation.cleaned if validation.valid else ocsf
+        raw_dict = _parse_raw_dict(req.raw_log)
 
-        try:
-            raw_dict = json.loads(req.raw_log)
-            if not isinstance(raw_dict, dict):
-                raw_dict = {"raw": req.raw_log}
-        except (json.JSONDecodeError, ValueError):
-            raw_dict = {"raw": req.raw_log}
+        post_result = _post_processor.process(ocsf, raw_dict, req.source)
 
-        
-        result = compute_confidence(
+        validation = validate_ocsf(post_result.cleaned_ocsf, source=req.source)
+        clean_ocsf = validation.cleaned if validation.valid else post_result.cleaned_ocsf
+
+        scoring = compute_confidence(
             raw_dict, clean_ocsf, req.source,
             validation_errors=validation.errors,
             validation_warnings=validation.warnings,
@@ -60,17 +66,20 @@ def _sync_normalize(req: NormalizeRequest) -> NormalizeResponse:
         processing_time_ms = int((time.time() - start_time) * 1000)
 
         logger.info(
-            "source=%s confidence=%.3f decision=%s time_ms=%d",
-            req.source, result.score, result.decision, processing_time_ms,
+            "source=%s confidence=%.3f decision=%s time_ms=%d fixes=%d hallucinations=%d",
+            req.source, scoring.score, scoring.decision, processing_time_ms,
+            len(post_result.fixes_applied), len(post_result.hallucinations_stripped),
         )
 
         return NormalizeResponse(
             ocsf=clean_ocsf,
-            decision=result.decision,
-            confidence=result.score,
+            decision=scoring.decision,
+            confidence=scoring.score,
             processing_time_ms=processing_time_ms,
-            breakdown=result.breakdown,
-            validation_errors=result.validation_errors if result.validation_errors else None,
+            breakdown=scoring.breakdown,
+            validation_errors=scoring.validation_errors if scoring.validation_errors else None,
+            fixes_applied=post_result.fixes_applied,
+            hallucinations_stripped=post_result.hallucinations_stripped,
         )
 
     except Exception as err:
