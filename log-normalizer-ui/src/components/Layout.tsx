@@ -1,3 +1,4 @@
+import { useAuth } from '../api/auth'
 import type { Page } from '../types'
 
 const NAV_ITEMS: { id: Page; label: string }[] = [
@@ -13,33 +14,47 @@ interface LayoutProps {
   children: React.ReactNode
 }
 
-const Layout = ({ activePage, onNavigate, children }: LayoutProps) => (
-  <div className="layout">
-    <aside className="sidebar">
-      <div className="sidebar-brand">
-        <div className="sidebar-logo">L</div>
-        <div>
-          <div className="sidebar-brand-name">Log Normalizer</div>
-          <div className="sidebar-brand-sub">Beyon Cyber</div>
+const Layout = ({ activePage, onNavigate, children }: LayoutProps) => {
+  const { user, logout } = useAuth()
+
+  return (
+    <div className="layout">
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div className="sidebar-logo">L</div>
+          <div>
+            <div className="sidebar-brand-name">Log Normalizer</div>
+            <div className="sidebar-brand-sub">Beyon Cyber</div>
+          </div>
         </div>
-      </div>
 
-      <nav className="sidebar-nav">
-        {NAV_ITEMS.map(({ id, label }) => (
-          <button
-            key={id}
-            className={`nav-item ${activePage === id ? 'nav-item--active' : ''}`}
-            onClick={() => onNavigate(id)}
-          >
-            <span className="nav-dot" />
-            {label}
-          </button>
-        ))}
-      </nav>
-    </aside>
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map(({ id, label }) => (
+            <button
+              key={id}
+              className={`nav-item ${activePage === id ? 'nav-item--active' : ''}`}
+              onClick={() => onNavigate(id)}
+            >
+              <span className="nav-dot" />
+              {label}
+            </button>
+          ))}
+        </nav>
 
-    <main className="content">{children}</main>
-  </div>
-)
+        {user && (
+          <div className="sidebar-user">
+            <div className="sidebar-user-email">{user.email}</div>
+            <div className="sidebar-user-role">{user.role}</div>
+            <button className="sidebar-logout" onClick={() => void logout()}>
+              Sign out
+            </button>
+          </div>
+        )}
+      </aside>
+
+      <main className="content">{children}</main>
+    </div>
+  )
+}
 
 export default Layout

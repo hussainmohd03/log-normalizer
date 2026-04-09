@@ -2,6 +2,15 @@
 
 export type Page = 'dashboard' | 'review' | 'metrics' | 'health'
 
+/* -- Auth -- */
+
+export type UserRole = 'ANALYST' | 'ADMIN'
+
+export interface AuthUser {
+  email: string
+  role: UserRole
+}
+
 /* -- Metrics -- */
 export interface SystemMetrics {
   memory_used_mb: number
@@ -60,7 +69,7 @@ export interface ConfidenceBreakdown {
 
 export interface PendingReview {
   id: string
-  rawLogId: string
+  normalizeJobId: string
   source: string
   confidence: number
   confidenceBreakdown: ConfidenceBreakdown | null
@@ -68,16 +77,21 @@ export interface PendingReview {
   priority: 'NORMAL' | 'HIGH'
   slmOcsfOutput: Record<string, unknown>
   queuedAt: string
-  rawLog: {
+  /**
+   * Joined NormalizeJob row (set by ReviewService.getPending). The
+   * `rawLog` field on the join is now a JSON value, not a wrapper
+   * object — schema unification removed the old RawLog table.
+   */
+  normalizeJob: {
     id: string
-    rawContent: Record<string, unknown>
+    rawLog: Record<string, unknown>
     source: string
   }
 }
 
 export interface CorrectionPayload {
+  /** reviewedBy is sourced from the JWT — never sent from the client. */
   correctedOcsf: Record<string, unknown>
-  reviewedBy: string
 }
 
 /* -- Health -- */

@@ -17,23 +17,17 @@ const confColor = (val: number): string => {
 }
 
 const ReviewDetail = ({ review, onBack }: ReviewDetailProps) => {
-  const [ocsf, setOcsf]           = useState(JSON.stringify(review.slmOcsfOutput, null, 2))
-  const [reviewer, setReviewer]   = useState('')
+  const [ocsf, setOcsf] = useState(JSON.stringify(review.slmOcsfOutput, null, 2))
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError]         = useState<string | null>(null)
-  const [tab, setTab]             = useState<'model' | 'corrected'>('corrected')
+  const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState<'model' | 'corrected'>('corrected')
 
-  const color       = confColor(review.confidence)
-  const breakdown   = review.confidenceBreakdown
-  const errors      = review.validationErrors ?? []
+  const color = confColor(review.confidence)
+  const breakdown = review.confidenceBreakdown
+  const errors = review.validationErrors ?? []
   const priorityBadge = review.priority === 'HIGH' ? 'red' : 'amber'
 
   const handleSubmit = async () => {
-    if (!reviewer.trim()) {
-      setError('Reviewer name is required')
-      return
-    }
-
     let parsed: Record<string, unknown>
     try {
       parsed = JSON.parse(ocsf)
@@ -46,10 +40,9 @@ const ReviewDetail = ({ review, onBack }: ReviewDetailProps) => {
     setError(null)
 
     try {
-      await endpoints.submitCorrection(review.id, {
-        correctedOcsf: parsed,
-        reviewedBy: reviewer,
-      })
+      // Reviewer identity comes from the JWT cookie on the backend.
+      // We never send it from the client.
+      await endpoints.submitCorrection(review.id, { correctedOcsf: parsed })
       onBack()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Submission failed')
@@ -111,7 +104,7 @@ const ReviewDetail = ({ review, onBack }: ReviewDetailProps) => {
             <span className="panel-title">Raw alert (input)</span>
             <span className="panel-hint">Read only</span>
           </div>
-          <JsonViewer data={review.rawLog.rawContent} maxHeight={340} />
+          <JsonViewer data={review.normalizeJob.rawLog} maxHeight={340} />
         </div>
 
         <div className="panel">
@@ -149,16 +142,6 @@ const ReviewDetail = ({ review, onBack }: ReviewDetailProps) => {
 
       {/* -- Action bar -- */}
       <div className="action-bar">
-        <div className="action-bar-left">
-          <span>Reviewer:</span>
-          <input
-            className="input"
-            type="text"
-            placeholder="Your name"
-            value={reviewer}
-            onChange={(e) => setReviewer(e.target.value)}
-          />
-        </div>
         <div className="action-bar-right">
           <button className="btn btn--ghost" onClick={onBack}>Skip</button>
           <button
