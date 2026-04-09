@@ -62,6 +62,7 @@ const SAMPLE_PAYLOAD = {
 interface JobResponseShape {
   jobId: string
   status: JobStatus
+  parentJobId: string | null
   result: { decision: string; confidence: number } | null
   error: string | null
 }
@@ -264,6 +265,64 @@ describe('Normalize async flow E2E', () => {
     const row = await prisma.normalizeJob.findUniqueOrThrow({ where: { id: jobId } })
     expect(row.attempts).toBe(3)
   }, 90_000)
+
+  // ── Retry endpoint ───────────────────────────────────────────────────
+
+  it('full retry flow: original FAILS all 3 attempts, retry runs and COMPLETES', async () => {
+    // First job: fail all 3 attempts
+    slmMock.normalize.mockRejectedValue(new Error('circuit open'))
+    const originalId = await enqueue()
+    const originalFinal = await waitForTerminal(originalId, 60_000)
+    expect(originalFinal.status).toBe('FAILED')
+
+    // Reset the mock so the retry succeeds
+    slmMock.normalize.mockReset()
+    slmMock.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE)
+
+    // POST /retry on the failed source
+    const retryRes = await request(httpApp.getHttpServer())
+      .post(`/api/normalize/jobs/${originalId}/retry`)
+      .set('x-api-key', process.env.API_KEY!)
+      .expect(202)
+
+    const childId = retryRes.body.jobId
+    expect(childId).toMatch(/^[0-9a-f-]{36}$/)
+    expect(childId).not.toBe(originalId)
+    expect(retryRes.body.parentJobId).toBe(originalId)
+
+    // Wait for the retry to finish — should succeed
+    const childFinal = await waitForTerminal(childId, 60_000)
+    expect(childFinal.status).toBe('COMPLETED')
+    expect(childFinal.parentJobId).toBe(originalId)
+    expect(childFinal.result?.decision).toBe('accept')
+
+    // Both rows exist in the DB with correct statuses
+    const [originalRow, childRow] = await Promise.all([
+      prisma.normalizeJob.findUniqueOrThrow({ where: { id: originalId } }),
+      prisma.normalizeJob.findUniqueOrThrow({ where: { id: childId } }),
+    ])
+    expect(originalRow.status).toBe('FAILED')
+    expect(childRow.status).toBe('COMPLETED')
+    expect(childRow.parentJobId).toBe(originalId)
+  }, 120_000)
+
+  it('POST /retry on a non-FAILED job returns 409', async () => {
+    slmMock.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE)
+    const jobId = await enqueue()
+    await waitForTerminal(jobId, 60_000) // wait until COMPLETED
+
+    await request(httpApp.getHttpServer())
+      .post(`/api/normalize/jobs/${jobId}/retry`)
+      .set('x-api-key', process.env.API_KEY!)
+      .expect(409)
+  }, 90_000)
+
+  it('POST /retry on an unknown UUID returns 404', async () => {
+    await request(httpApp.getHttpServer())
+      .post('/api/normalize/jobs/00000000-0000-4000-8000-000000000000/retry')
+      .set('x-api-key', process.env.API_KEY!)
+      .expect(404)
+  })
 
   it('GET /api/normalize/jobs/:id with unknown UUID returns 404', async () => {
     await request(httpApp.getHttpServer())

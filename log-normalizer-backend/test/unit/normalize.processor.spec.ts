@@ -14,6 +14,7 @@ const ROW: NormalizeJob = {
   source: 'crowdstrike',
   format: 'json',
   idempotencyKey: null,
+  parentJobId: null,
   ocsf: null,
   confidence: null,
   decision: null,

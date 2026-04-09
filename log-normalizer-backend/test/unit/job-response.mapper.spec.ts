@@ -8,6 +8,7 @@ const BASE: NormalizeJob = {
   source: 'crowdstrike',
   format: 'json',
   idempotencyKey: null,
+  parentJobId: null,
   ocsf: null,
   confidence: null,
   decision: null,
@@ -89,6 +90,17 @@ describe('toJobResponse', () => {
       validationErrors: [],
       processingTimeMs: 175_000,
     });
+  });
+
+  it('parentJobId is forwarded from the row when set', () => {
+    const child: NormalizeJob = { ...BASE, parentJobId: 'parent-uuid' };
+    const out = toJobResponse(child);
+    expect(out.parentJobId).toBe('parent-uuid');
+  });
+
+  it('parentJobId is null when the row has no parent', () => {
+    const out = toJobResponse(BASE);
+    expect(out.parentJobId).toBeNull();
   });
 
   it('FAILED → error populated, result null', () => {

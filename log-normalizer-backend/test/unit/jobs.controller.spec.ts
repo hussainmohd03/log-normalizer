@@ -1,7 +1,8 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JobStatus, NormalizeJob } from 'generated/prisma/client';
 import { ApiGuard } from '../../src/common/guards/api-key.guard';
+import { JobRetryService } from '../../src/jobs/job-retry.service';
 import { JobsEventsService } from '../../src/jobs/jobs-events.service';
 import { JobsController } from '../../src/jobs/jobs.controller';
 import { JobsService } from '../../src/jobs/jobs.service';
@@ -13,6 +14,7 @@ const ROW: NormalizeJob = {
   source: 'crowdstrike',
   format: 'json',
   idempotencyKey: null,
+  parentJobId: null,
   ocsf: null,
   confidence: null,
   decision: null,
@@ -30,16 +32,19 @@ const ROW: NormalizeJob = {
 describe('JobsController', () => {
   let controller: JobsController;
   let mockJobs: { findById: jest.Mock };
+  let mockRetry: { retry: jest.Mock };
 
   beforeEach(async () => {
     mockJobs = { findById: jest.fn() };
     const mockEvents = { streamJob: jest.fn() };
+    mockRetry = { retry: jest.fn() };
 
     const module = await Test.createTestingModule({
       controllers: [JobsController],
       providers: [
         { provide: JobsService, useValue: mockJobs },
         { provide: JobsEventsService, useValue: mockEvents },
+        { provide: JobRetryService, useValue: mockRetry },
       ],
     })
       .overrideGuard(ApiGuard)
@@ -74,5 +79,37 @@ describe('JobsController', () => {
     mockJobs.findById.mockRejectedValueOnce(new Error('db down'));
 
     await expect(controller.findOne(ROW.id)).rejects.toThrow('db down');
+  });
+
+  // ── retry endpoint ──────────────────────────────────────────────────────
+
+  describe('POST :id/retry', () => {
+    it('returns { jobId, status, parentJobId } from JobRetryService.retry', async () => {
+      const child: NormalizeJob = {
+        ...ROW,
+        id: 'child-uuid',
+        parentJobId: ROW.id,
+      };
+      mockRetry.retry.mockResolvedValueOnce(child);
+
+      const result = await controller.retry(ROW.id);
+
+      expect(mockRetry.retry).toHaveBeenCalledWith(ROW.id);
+      expect(result).toEqual({
+        jobId: 'child-uuid',
+        status: 'queued',
+        parentJobId: ROW.id,
+      });
+    });
+
+    it('propagates NotFoundException from the service', async () => {
+      mockRetry.retry.mockRejectedValueOnce(new NotFoundException('Job xxx not found'));
+      await expect(controller.retry(ROW.id)).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('propagates ConflictException from the service', async () => {
+      mockRetry.retry.mockRejectedValueOnce(new ConflictException('job is still running'));
+      await expect(controller.retry(ROW.id)).rejects.toBeInstanceOf(ConflictException);
+    });
   });
 });
