@@ -80,9 +80,11 @@ const Health = () => {
     },
   ]
 
+  // Scheduled cron jobs registered with @nestjs/schedule on the backend.
+  // Update this list whenever a new @Cron decorator is added or removed.
   const jobs: ServiceRow[] = [
-    { name: 'Reprocess job', status: 'Every 5m', dot: 'green' },
-    { name: 'SQS retry job', status: 'Every 1m', dot: 'green' },
+    { name: 'Reconciliation sweep', status: 'Every 5m', dot: 'green' },
+    { name: 'SQS retry', status: 'Every 1m', dot: 'green' },
   ]
 
   const allNominal = services.every((s) => s.dot === 'green')
