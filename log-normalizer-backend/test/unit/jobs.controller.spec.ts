@@ -1,7 +1,8 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JobStatus, NormalizeJob } from 'generated/prisma/client';
-import { ApiGuard } from '../../src/common/guards/api-key.guard';
+import { JwtAuthGuard } from '../../src/auth/guards/jwt-auth.guard';
+import { JwtOrApiKeyAuthGuard } from '../../src/auth/guards/jwt-or-api-key-auth.guard';
 import { JobRetryService } from '../../src/jobs/job-retry.service';
 import { JobsEventsService } from '../../src/jobs/jobs-events.service';
 import { JobsController } from '../../src/jobs/jobs.controller';
@@ -47,7 +48,9 @@ describe('JobsController', () => {
         { provide: JobRetryService, useValue: mockRetry },
       ],
     })
-      .overrideGuard(ApiGuard)
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(JwtOrApiKeyAuthGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

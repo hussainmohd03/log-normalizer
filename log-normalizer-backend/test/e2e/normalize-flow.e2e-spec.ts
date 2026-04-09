@@ -21,17 +21,22 @@ import { INestApplication, ValidationPipe } from '@nestjs/common'
 import { getQueueToken } from '@nestjs/bullmq'
 import { Test, TestingModule } from '@nestjs/testing'
 import { Queue } from 'bullmq'
+import cookieParser from 'cookie-parser'
 import IORedis from 'ioredis'
 import request from 'supertest'
 import { AppModule } from 'src/app.module'
+import { AuthService } from 'src/auth/auth.service'
 import { PrismaService } from 'src/database/prisma.service'
 import { SQSClientService } from 'src/delivery/sqs-client.service'
 import { NORMALIZE_QUEUE } from 'src/queue/queue-names'
 import { SLMService } from 'src/slm/slm.service'
 import { WorkerModule } from 'src/worker/worker.module'
-import { JobStatus } from 'generated/prisma/client'
+import { JobStatus, UserRole } from 'generated/prisma/client'
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface'
 import { cleanDatabase } from 'test/helper/prisma-test'
+
+const TEST_USER_EMAIL = 'flow-analyst@e2e.test'
+const TEST_USER_PASSWORD = 'flow-test-pw-1'
 
 const SUCCESS_RESPONSE: SLMResponse = {
   ocsf: {
@@ -74,6 +79,7 @@ describe('Normalize async flow E2E', () => {
   let queue: Queue
   let slmMock: { normalize: jest.Mock }
   let sqsMock: { publish: jest.Mock }
+  let authCookie: string
 
   beforeAll(async () => {
     // Fail fast if Redis is unreachable so we get a clear error instead
@@ -114,6 +120,7 @@ describe('Normalize async flow E2E', () => {
 
     httpApp = httpModule.createNestApplication()
     httpApp.setGlobalPrefix('api')
+    httpApp.use(cookieParser())
     httpApp.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
     )
@@ -121,6 +128,25 @@ describe('Normalize async flow E2E', () => {
 
     prisma = httpModule.get(PrismaService)
     queue = httpModule.get<Queue>(getQueueToken(NORMALIZE_QUEUE))
+
+    // Seed an analyst user and capture an auth cookie for the JWT-only
+    // retry endpoint. Idempotent — survives across runs.
+    const authService = httpModule.get(AuthService)
+    try {
+      await authService.createUser({
+        email: TEST_USER_EMAIL,
+        password: TEST_USER_PASSWORD,
+        role: UserRole.ANALYST,
+      })
+    } catch {
+      /* user already exists from a prior run */
+    }
+    const loginRes = await request(httpApp.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: TEST_USER_EMAIL, password: TEST_USER_PASSWORD })
+      .expect(200)
+    authCookie = loginRes.headers['set-cookie']?.[0] ?? ''
+    if (!authCookie) throw new Error('Login did not return an auth cookie')
 
     // ── Worker context (WorkerModule) ──────────────────────────────────
     // Same SLM mock instance — both contexts see the same controlled
@@ -279,10 +305,10 @@ describe('Normalize async flow E2E', () => {
     slmMock.normalize.mockReset()
     slmMock.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE)
 
-    // POST /retry on the failed source
+    // POST /retry on the failed source — JWT only
     const retryRes = await request(httpApp.getHttpServer())
       .post(`/api/normalize/jobs/${originalId}/retry`)
-      .set('x-api-key', process.env.API_KEY!)
+      .set('Cookie', authCookie)
       .expect(202)
 
     const childId = retryRes.body.jobId
@@ -313,15 +339,28 @@ describe('Normalize async flow E2E', () => {
 
     await request(httpApp.getHttpServer())
       .post(`/api/normalize/jobs/${jobId}/retry`)
-      .set('x-api-key', process.env.API_KEY!)
+      .set('Cookie', authCookie)
       .expect(409)
   }, 90_000)
 
   it('POST /retry on an unknown UUID returns 404', async () => {
     await request(httpApp.getHttpServer())
       .post('/api/normalize/jobs/00000000-0000-4000-8000-000000000000/retry')
-      .set('x-api-key', process.env.API_KEY!)
+      .set('Cookie', authCookie)
       .expect(404)
+  })
+
+  it('POST /retry without auth (no cookie, no api key) returns 401', async () => {
+    await request(httpApp.getHttpServer())
+      .post('/api/normalize/jobs/00000000-0000-4000-8000-000000000000/retry')
+      .expect(401)
+  })
+
+  it('POST /retry with API key only returns 401 (retry is human-only)', async () => {
+    await request(httpApp.getHttpServer())
+      .post('/api/normalize/jobs/00000000-0000-4000-8000-000000000000/retry')
+      .set('x-api-key', process.env.API_KEY!)
+      .expect(401)
   })
 
   it('GET /api/normalize/jobs/:id with unknown UUID returns 404', async () => {

@@ -1,14 +1,21 @@
 // test/e2e/app.e2e-spec.ts
-import { Test } from '@nestjs/testing'
 import { INestApplication, ValidationPipe } from '@nestjs/common'
+import { Test } from '@nestjs/testing'
+import cookieParser from 'cookie-parser'
 import request from 'supertest'
+import { AuthService } from 'src/auth/auth.service'
 import { AppModule } from 'src/app.module'
 import { PrismaService } from 'src/database/prisma.service'
 import { cleanDatabase } from 'test/helper/prisma-test'
+import { UserRole } from 'generated/prisma/client'
+
+const TEST_USER_EMAIL = 'analyst@e2e.test'
+const TEST_USER_PASSWORD = 'super-secret-pw-1'
 
 describe('App E2E', () => {
   let app: INestApplication
   let prisma: PrismaService
+  let authCookie: string
 
   beforeAll(async () => {
     const module = await Test.createTestingModule({
@@ -17,6 +24,7 @@ describe('App E2E', () => {
 
     app = module.createNestApplication()
     app.setGlobalPrefix('api')
+    app.use(cookieParser())
     app.useGlobalPipes(new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
@@ -25,11 +33,35 @@ describe('App E2E', () => {
     await app.init()
 
     prisma = module.get(PrismaService)
+
+    // Seed an analyst user once and capture the auth cookie for the
+    // tests that hit JWT-only endpoints (metrics, review, retry).
+    const authService = module.get(AuthService)
+    // Idempotent — ignore unique-violation if a previous run left it.
+    try {
+      await authService.createUser({
+        email: TEST_USER_EMAIL,
+        password: TEST_USER_PASSWORD,
+        role: UserRole.ANALYST,
+      })
+    } catch {
+      /* user already exists */
+    }
+
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: TEST_USER_EMAIL, password: TEST_USER_PASSWORD })
+      .expect(200)
+    authCookie = loginRes.headers['set-cookie']?.[0] ?? ''
+    if (!authCookie) throw new Error('Login did not return an auth cookie')
   })
 
   beforeEach(async () => {
     await cleanDatabase(prisma)
   })
+
+  // The cleanDatabase helper preserves the User table — the seeded
+  // analyst from beforeAll survives across tests.
 
   afterAll(async () => {
     await app.close()
@@ -141,13 +173,42 @@ describe('App E2E', () => {
     expect(rows).toHaveLength(1)
   })
 
-  // -- Metrics --
-  it('GET /api/metrics/overview returns zeroes on empty DB', async () => {
+  // -- Metrics (JWT-only) --
+  it('GET /api/metrics/overview with JWT cookie returns zeroes on empty DB', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/metrics/overview')
-      .set('x-api-key', process.env.API_KEY!)
+      .set('Cookie', authCookie)
       .expect(200)
 
     expect(res.body.totalLogs).toBe(0)
+  })
+
+  it('GET /api/metrics/overview with API key returns 401 (metrics is human-only)', async () => {
+    await request(app.getHttpServer())
+      .get('/api/metrics/overview')
+      .set('x-api-key', process.env.API_KEY!)
+      .expect(401)
+  })
+
+  // -- Auth: login/me/logout --
+  it('GET /api/auth/me returns the authenticated user', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/auth/me')
+      .set('Cookie', authCookie)
+      .expect(200)
+
+    expect(res.body.email).toBe(TEST_USER_EMAIL)
+    expect(res.body.role).toBe(UserRole.ANALYST)
+  })
+
+  it('GET /api/auth/me without cookie returns 401', async () => {
+    await request(app.getHttpServer()).get('/api/auth/me').expect(401)
+  })
+
+  it('POST /api/auth/login with wrong password returns 401', async () => {
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: TEST_USER_EMAIL, password: 'wrong-password' })
+      .expect(401)
   })
 })
