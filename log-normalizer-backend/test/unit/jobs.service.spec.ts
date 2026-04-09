@@ -104,7 +104,7 @@ describe('JobsService', () => {
   // ─── markActive ─────────────────────────────────────────────────────────────
 
   describe('markActive', () => {
-    it('transitions QUEUED → ACTIVE and sets startedAt', async () => {
+    it('transitions QUEUED → ACTIVE, sets startedAt, sets attempts to 1', async () => {
       const before = new Date();
       const job = await service.create(SAMPLE_DTO);
 
@@ -115,6 +115,7 @@ describe('JobsService', () => {
       expect(updated.startedAt!.getTime()).toBeGreaterThanOrEqual(
         before.getTime(),
       );
+      expect(updated.attempts).toBe(1);
     });
 
     it('persists ACTIVE status to the database', async () => {
@@ -128,19 +129,34 @@ describe('JobsService', () => {
       expect(stored.startedAt).not.toBeNull();
     });
 
-    it('throws when the job is not in QUEUED state (already ACTIVE)', async () => {
+    it('is idempotent across retries: ACTIVE → ACTIVE bumps attempts and startedAt', async () => {
       const job = await service.create(SAMPLE_DTO);
-      await service.markActive(job.id);
+      const first = await service.markActive(job.id);
+      expect(first.attempts).toBe(1);
 
-      await expect(service.markActive(job.id)).rejects.toThrow(
-        `markActive: job ${job.id} not found or not in QUEUED state`,
-      );
+      // Wait a tick so startedAt actually advances
+      await new Promise((r) => setTimeout(r, 5));
+
+      const second = await service.markActive(job.id);
+      expect(second.status).toBe(JobStatus.ACTIVE);
+      expect(second.attempts).toBe(2);
+      expect(second.startedAt!.getTime()).toBeGreaterThan(first.startedAt!.getTime());
     });
 
     it('throws when the job id does not exist', async () => {
       const id = '00000000-0000-0000-0000-000000000000';
       await expect(service.markActive(id)).rejects.toThrow(
-        `markActive: job ${id} not found or not in QUEUED state`,
+        `markActive: job ${id} not found or in terminal state`,
+      );
+    });
+
+    it('throws when the job is in a terminal state (COMPLETED)', async () => {
+      const job = await service.create(SAMPLE_DTO);
+      await service.markActive(job.id);
+      await service.markCompleted(job.id, SAMPLE_RESULT);
+
+      await expect(service.markActive(job.id)).rejects.toThrow(
+        `markActive: job ${job.id} not found or in terminal state`,
       );
     });
   });

@@ -33,11 +33,12 @@ describe('NormalizeProducer', () => {
     );
   });
 
-  it('sets attempts: 1 (no retries in Week 1)', async () => {
+  it('sets attempts: 3 with exponential backoff (Week 2 retry policy)', async () => {
     await producer.enqueue('any-id');
 
     const [, , options] = mockQueue.add.mock.calls[0];
-    expect(options.attempts).toBe(1);
+    expect(options.attempts).toBe(3);
+    expect(options.backoff).toEqual({ type: 'exponential', delay: 5000 });
   });
 
   it('preserves BullMQ job history (removeOnComplete/Fail both false)', async () => {

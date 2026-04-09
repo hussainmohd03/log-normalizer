@@ -30,18 +30,31 @@ export class JobsService {
   }
 
   /**
-   * Precondition: job must be in QUEUED state.
-   * Uses a WHERE-clause guard so the check is atomic — no separate read.
-   * Throws if the job is not found or not in QUEUED state.
+   * Claims a job for processing. Idempotent across BullMQ retries:
+   *  - First call (status=QUEUED): transitions to ACTIVE, sets startedAt,
+   *    increments attempts to 1.
+   *  - Retry call (status=ACTIVE): leaves status, bumps startedAt to "now"
+   *    (the latest attempt's start), increments attempts.
+   *
+   * Throws only if the row is missing or in a terminal state (COMPLETED
+   * or FAILED) — those mean a sweep raced us, and the worker should ack
+   * the BullMQ job and move on.
+   *
+   * The WHERE-clause IS the race guard: a single atomic UPDATE that
+   * cannot collide with a worker on a different attempt or a sweep.
    */
   async markActive(id: string): Promise<NormalizeJob> {
     const { count } = await this.prisma.normalizeJob.updateMany({
-      where: { id, status: 'QUEUED' },
-      data: { status: 'ACTIVE', startedAt: new Date() },
+      where: { id, status: { in: ['QUEUED', 'ACTIVE'] } },
+      data: {
+        status: 'ACTIVE',
+        startedAt: new Date(),
+        attempts: { increment: 1 },
+      },
     });
 
     if (count === 0) {
-      throw new Error(`markActive: job ${id} not found or not in QUEUED state`);
+      throw new Error(`markActive: job ${id} not found or in terminal state`);
     }
 
     return this.prisma.normalizeJob.findUniqueOrThrow({ where: { id } });
