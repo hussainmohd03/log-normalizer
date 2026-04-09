@@ -25,10 +25,11 @@ def test_process_returns_cleaned_dict_independent_from_caller():
 def test_process_pipeline_runs_clean_input_through_all_stages():
     pp = PostProcessor()
     result = pp.process(
-        {"metadata": {"version": "1.7.0"}},
+        {"metadata": {"version": "1.7.0", "product": {"vendor_name": "Splunk"}}},
         raw_alert={},
         source="splunk",
     )
-    assert result.cleaned_ocsf == {"metadata": {"version": "1.7.0"}}
+    assert result.cleaned_ocsf["metadata"]["version"] == "1.7.0"
+    assert result.cleaned_ocsf["metadata"]["product"]["vendor_name"] == "Splunk"
     assert result.fixes_applied == []
     assert result.hallucinations_stripped == []
