@@ -49,7 +49,7 @@ enum PRIORITY {
 
 model ManualReview {
   id                  String       @id @default(uuid())
-  normalizeJobId      String
+  normalizeJobId      String       @unique
   normalizeJob        NormalizeJob @relation(fields: [normalizeJobId], references: [id], onDelete: Cascade)
   source              String
   slmOcsfOutput       Json
@@ -69,13 +69,14 @@ model ManualReview {
 }
 
 model ProcessingMetric {
-  id         String    @id @default(uuid())
-  timestamp  DateTime  @default(now())
-  source     String
-  confidence Float?
-  latencyMs  Int?
-  decision   DECISION?
-  success    Boolean   @default(true)
+  id             String    @id @default(uuid())
+  normalizeJobId String?   @unique
+  timestamp      DateTime  @default(now())
+  source         String
+  confidence     Float?
+  latencyMs      Int?
+  decision       DECISION?
+  success        Boolean   @default(true)
 
   @@index([timestamp, source])
   @@index([source, timestamp])
