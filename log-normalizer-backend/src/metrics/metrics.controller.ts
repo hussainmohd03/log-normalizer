@@ -1,9 +1,9 @@
 import { Controller, DefaultValuePipe, Get, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { MetricsService } from './metrics.service';
-import { ApiGuard } from 'src/common/guards/api-key.guard';
 
 @Controller('metrics')
-@UseGuards(ApiGuard)
+@UseGuards(JwtAuthGuard)
 export class MetricsController {
 
   constructor(private metricsService: MetricsService){}

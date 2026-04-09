@@ -9,6 +9,7 @@ import { ReviewModule } from './review/review.module';
 import { SLMModule } from './slm/slm.module';
 import { JobsModule } from './jobs/jobs.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
+import { AuthModule } from './auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MetricsModule } from './metrics/metrics.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -30,6 +31,7 @@ import { APP_GUARD } from '@nestjs/core';
     MetricsModule,
     JobsModule,
     ReconciliationModule,
+    AuthModule,
   ],
   controllers: [HealthController],
   providers: [

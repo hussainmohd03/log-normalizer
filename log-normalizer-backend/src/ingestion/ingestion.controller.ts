@@ -1,10 +1,10 @@
 import { Body, Controller, Headers, HttpCode, HttpStatus, Post, UseGuards } from "@nestjs/common";
-import { ApiGuard } from "src/common/guards/api-key.guard";
+import { ApiKeyAuthGuard } from "src/auth/guards/api-key-auth.guard";
 import { IngestBatchDto, IngestDto } from "./dto/ingest-log.dto";
 import { IngestionService } from "./ingestion.service";
 
 @Controller('logs')
-@UseGuards(ApiGuard)
+@UseGuards(ApiKeyAuthGuard)
 export class IngestionController {
   constructor(private ingestionService: IngestionService) {}
 

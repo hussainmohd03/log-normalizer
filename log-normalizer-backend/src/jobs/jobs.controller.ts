@@ -12,7 +12,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { ApiGuard } from 'src/common/guards/api-key.guard';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { JwtOrApiKeyAuthGuard } from 'src/auth/guards/jwt-or-api-key-auth.guard';
 import { JobResponse, toJobResponse } from './dto/job-response.dto';
 import { JobRetryService } from './job-retry.service';
 import { JobsEventsService } from './jobs-events.service';
@@ -29,7 +30,6 @@ import { JobsService } from './jobs.service';
  * (`GET /:id/events`) on this same controller.
  */
 @Controller('normalize/jobs')
-@UseGuards(ApiGuard)
 export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
@@ -38,6 +38,7 @@ export class JobsController {
   ) {}
 
   @Get(':id')
+  @UseGuards(JwtOrApiKeyAuthGuard)
   async findOne(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<JobResponse> {
@@ -61,6 +62,7 @@ export class JobsController {
    *  - Row missing at connect: NotFoundException → 404 before SSE opens.
    */
   @Sse(':id/events')
+  @UseGuards(JwtOrApiKeyAuthGuard)
   events(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Observable<MessageEvent> {
@@ -75,6 +77,7 @@ export class JobsController {
    */
   @Post(':id/retry')
   @HttpCode(HttpStatus.ACCEPTED)
+  @UseGuards(JwtAuthGuard)
   async retry(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<{ jobId: string; status: 'queued'; parentJobId: string }> {
