@@ -19,6 +19,21 @@ enum DECISION {
   CORRECTED
 }
 
+enum UserRole {
+  ANALYST
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         UserRole  @default(ANALYST)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
+}
+
 model OCSFEvent {
   id             String       @id @default(uuid())
   normalizeJobId String       @unique
