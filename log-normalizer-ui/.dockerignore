@@ -1,0 +1,20 @@
+node_modules
+dist
+.vite
+coverage
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Tests and IDE
+.vscode
+.idea
+*.log
+
+# Git and meta
+.git
+.gitignore
+.dockerignore
+Dockerfile

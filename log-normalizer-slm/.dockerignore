@@ -1,0 +1,36 @@
+# Caches and venvs — recreated inside the image
+.venv
+venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Model weights — mounted at runtime, not baked in
+models
+data
+
+# Training artifacts and outputs
+training/runs
+training/checkpoints
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Tests and IDE
+tests
+.vscode
+.idea
+*.log
+
+# Git and meta
+.git
+.gitignore
+.dockerignore
+Dockerfile
