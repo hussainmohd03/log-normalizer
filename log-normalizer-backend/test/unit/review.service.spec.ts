@@ -64,6 +64,22 @@ describe('ReviewService', () => {
     ).rejects.toThrow()
   })
 
+  it('queue(): upserts on retry — second call updates the existing row', async () => {
+    const job = await prisma.normalizeJob.create({ data: buildNormalizeJob() })
+    const first = buildSLMResponse({ decision: 'review', confidence: 0.55 })
+    const second = buildSLMResponse({ decision: 'review', confidence: 0.85 })
+
+    await reviewService.queue(job, first, PRIORITY.NORMAL)
+    await reviewService.queue(job, second, PRIORITY.HIGH)
+
+    const rows = await prisma.manualReview.findMany({
+      where: { normalizeJobId: job.id },
+    })
+    expect(rows).toHaveLength(1)
+    expect(rows[0].confidence).toBe(0.85)
+    expect(rows[0].priority).toBe(PRIORITY.HIGH)
+  })
+
   it('getPending(): returns items ordered by priority DESC then confidence ASC', async () => {
     const j1 = await prisma.normalizeJob.create({ data: buildNormalizeJob() })
     const j2 = await prisma.normalizeJob.create({ data: buildNormalizeJob() })

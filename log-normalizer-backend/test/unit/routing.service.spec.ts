@@ -52,7 +52,7 @@ describe('RoutingService', () => {
     expect(ocsf).not.toBeNull()
     expect(ocsf!.confidence).toBe(0.92)
 
-    expect(mockSQS.publish).toHaveBeenCalledWith(slmResponse.ocsf)
+    expect(mockSQS.publish).toHaveBeenCalledWith(slmResponse.ocsf, job.id)
     expect(mockReview.queue).not.toHaveBeenCalled()
   })
 
@@ -104,5 +104,62 @@ describe('RoutingService', () => {
     const slmResponse = buildSLMResponse({ decision: 'reject', ocsf: null, confidence: 0.2 })
 
     await expect(routingService.route(job, slmResponse)).rejects.toThrow()
+  })
+
+  // ── retry idempotency: route() called twice on the same job ────────────
+
+  it('upserts OCSFEvent on retry — second route() call updates instead of duplicating', async () => {
+    const job = await prisma.normalizeJob.create({ data: buildNormalizeJob() })
+    const first = buildSLMResponse({ decision: 'accept', confidence: 0.5 })
+    const second = buildSLMResponse({ decision: 'accept', confidence: 0.95 })
+
+    await routingService.route(job, first)
+    await routingService.route(job, second)
+
+    const ocsfRows = await prisma.oCSFEvent.findMany({
+      where: { normalizeJobId: job.id },
+    })
+    expect(ocsfRows).toHaveLength(1)
+    expect(ocsfRows[0].confidence).toBe(0.95) // latest attempt wins
+  })
+
+  it('upserts ProcessingMetric on retry — exactly one row per logical job', async () => {
+    const job = await prisma.normalizeJob.create({ data: buildNormalizeJob() })
+    const first = buildSLMResponse({ decision: 'accept', confidence: 0.5 })
+    const second = buildSLMResponse({ decision: 'accept', confidence: 0.95 })
+
+    await routingService.route(job, first)
+    await routingService.route(job, second)
+
+    const metricRows = await prisma.processingMetric.findMany({
+      where: { normalizeJobId: job.id },
+    })
+    expect(metricRows).toHaveLength(1)
+    expect(metricRows[0].confidence).toBe(0.95)
+  })
+
+  it('upsert resets publishedToSqs on retry so the new payload re-publishes', async () => {
+    const job = await prisma.normalizeJob.create({ data: buildNormalizeJob() })
+
+    // First attempt: publish succeeds, OCSFEvent gets publishedToSqs=true
+    await routingService.route(job, buildSLMResponse({ decision: 'accept' }))
+    await prisma.oCSFEvent.update({
+      where: { normalizeJobId: job.id },
+      data: { publishedToSqs: true, sqsMessageId: 'first-msg-id' },
+    })
+
+    // Second attempt (e.g. retry): the upsert update branch must reset
+    // publishedToSqs to false so handleAccept tries to publish the new
+    // payload.
+    await routingService.route(job, buildSLMResponse({ decision: 'accept', confidence: 0.99 }))
+
+    const ocsf = await prisma.oCSFEvent.findUnique({
+      where: { normalizeJobId: job.id },
+    })
+    // handleAccept ran a fresh publish on the second route() call, so
+    // publishedToSqs is back to true with the new mock id.
+    expect(ocsf!.publishedToSqs).toBe(true)
+    expect(ocsf!.sqsMessageId).toBe('msg-id-123')
+    expect(ocsf!.confidence).toBe(0.99)
   })
 })
