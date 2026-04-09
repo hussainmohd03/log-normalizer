@@ -18,6 +18,8 @@ export interface JobResponse {
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;
+  /** Set when this job was created via the retry endpoint. References the source job. */
+  parentJobId: string | null;
   result: JobResult | null;
   error: string | null;
 }
@@ -42,6 +44,7 @@ export function toJobResponse(row: NormalizeJob): JobResponse {
     createdAt: row.createdAt.toISOString(),
     startedAt: row.startedAt ? row.startedAt.toISOString() : null,
     completedAt: row.completedAt ? row.completedAt.toISOString() : null,
+    parentJobId: row.parentJobId,
     result: row.status === JobStatus.COMPLETED ? extractResult(row) : null,
     error: row.status === JobStatus.FAILED ? row.error : null,
   };

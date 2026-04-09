@@ -1,16 +1,20 @@
 import {
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   MessageEvent,
   NotFoundException,
   Param,
   ParseUUIDPipe,
+  Post,
   Sse,
   UseGuards,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { ApiGuard } from 'src/common/guards/api-key.guard';
 import { JobResponse, toJobResponse } from './dto/job-response.dto';
+import { JobRetryService } from './job-retry.service';
 import { JobsEventsService } from './jobs-events.service';
 import { JobsService } from './jobs.service';
 
@@ -30,6 +34,7 @@ export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
     private readonly jobsEventsService: JobsEventsService,
+    private readonly jobRetryService: JobRetryService,
   ) {}
 
   @Get(':id')
@@ -60,5 +65,20 @@ export class JobsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Observable<MessageEvent> {
     return this.jobsEventsService.streamJob(id);
+  }
+
+  /**
+   * Retries a FAILED job. Creates a NEW NormalizeJob row with a NEW UUID
+   * and a parentJobId reference to the source. Returns 202 with the new
+   * job envelope. 409 on any non-FAILED source state, 404 if the source
+   * does not exist.
+   */
+  @Post(':id/retry')
+  @HttpCode(HttpStatus.ACCEPTED)
+  async retry(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Promise<{ jobId: string; status: 'queued'; parentJobId: string }> {
+    const child = await this.jobRetryService.retry(id);
+    return { jobId: child.id, status: 'queued', parentJobId: id };
   }
 }
