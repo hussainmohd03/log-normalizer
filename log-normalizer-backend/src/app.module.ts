@@ -11,6 +11,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { TrainingDataModule } from './training-data/training-data.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MetricsModule } from './metrics/metrics.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -34,6 +35,7 @@ import { APP_GUARD } from '@nestjs/core';
     ReconciliationModule,
     AuthModule,
     UsersModule,
+    TrainingDataModule,
   ],
   controllers: [HealthController],
   providers: [
