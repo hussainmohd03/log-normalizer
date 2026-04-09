@@ -42,8 +42,23 @@ const SUCCESS_RESPONSE: SLMResponse = {
   error: null,
 };
 
-function makeJob(jobId: string): Job<{ jobId: string }> {
-  return { id: jobId, data: { jobId } } as unknown as Job<{ jobId: string }>;
+/**
+ * Builds a fake BullMQ Job. Defaults to the FIRST attempt of a 3-attempt
+ * job. Pass `attemptsMade` to simulate retries: 0=first try, 2=last try
+ * (since attemptsMade is the count BEFORE this attempt runs, per BullMQ
+ * semantics).
+ */
+function makeJob(
+  jobId: string,
+  attemptsMade = 0,
+  attempts = 3,
+): Job<{ jobId: string }> {
+  return {
+    id: jobId,
+    data: { jobId },
+    attemptsMade,
+    opts: { attempts },
+  } as unknown as Job<{ jobId: string }>;
 }
 
 describe('NormalizeProcessor', () => {
@@ -77,11 +92,16 @@ describe('NormalizeProcessor', () => {
     processor = module.get(NormalizeProcessor);
   });
 
-  // ── 1. lookup uses bullJob.data.jobId, not bullJob.id ───────────────────
+  // ── claim path ──────────────────────────────────────────────────────────
 
-  it('loads the row using bullJob.data.jobId', async () => {
+  it('loads the row using bullJob.data.jobId, not bullJob.id', async () => {
     mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
-    const job = { id: 'bull-internal-id', data: { jobId: ROW.id } } as unknown as Job<{ jobId: string }>;
+    const job = {
+      id: 'bull-internal-id',
+      data: { jobId: ROW.id },
+      attemptsMade: 0,
+      opts: { attempts: 3 },
+    } as unknown as Job<{ jobId: string }>;
 
     await processor.process(job);
 
@@ -89,9 +109,7 @@ describe('NormalizeProcessor', () => {
     expect(mockJobs.markActive).not.toHaveBeenCalledWith('bull-internal-id');
   });
 
-  // ── 2. markActive is called BEFORE the SLM call ─────────────────────────
-
-  it('calls markActive before invoking the SLM (race-window mitigation)', async () => {
+  it('calls markActive before invoking the SLM', async () => {
     const order: string[] = [];
     mockJobs.markActive.mockImplementationOnce(async () => {
       order.push('markActive');
@@ -107,9 +125,9 @@ describe('NormalizeProcessor', () => {
     expect(order).toEqual(['markActive', 'slm']);
   });
 
-  // ── 3. happy path → routing then markCompleted with mapped payload ─────
+  // ── happy path ──────────────────────────────────────────────────────────
 
-  it('on SLM success calls routing.route, then markCompleted with the mapped result', async () => {
+  it('on SLM success calls routing.route then markCompleted with the mapped result', async () => {
     mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
 
     await processor.process(makeJob(ROW.id));
@@ -145,76 +163,113 @@ describe('NormalizeProcessor', () => {
     expect(order).toEqual(['routing', 'markCompleted']);
   });
 
-  it('routing.route throwing maps to markFailed and never calls markCompleted', async () => {
-    mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
-    mockRouting.route.mockRejectedValueOnce(new Error('routing exploded'));
-
-    await processor.process(makeJob(ROW.id));
-
-    expect(mockJobs.markFailed).toHaveBeenCalledWith(ROW.id, 'routing exploded');
-    expect(mockJobs.markCompleted).not.toHaveBeenCalled();
-  });
-
   it('passes the row.rawLog object straight through to SLMService (not stringified)', async () => {
     mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
 
     await processor.process(makeJob(ROW.id));
 
     expect(mockSlm.normalize).toHaveBeenCalledWith({
-      raw_log: ROW.rawLog, // object, not a string
+      raw_log: ROW.rawLog,
       source: ROW.source,
       format: ROW.format,
     });
   });
 
-  // ── 4. SLM throws → markFailed, no partial result ───────────────────────
+  // ── retry semantics: transient failure (not the last attempt) ───────────
 
-  it('on SLM throw calls markFailed with the error message and never markCompleted', async () => {
+  it('on SLM throw with retries remaining: throws to BullMQ, does NOT markFailed', async () => {
     mockSlm.normalize.mockRejectedValueOnce(new Error('circuit open'));
 
-    await processor.process(makeJob(ROW.id));
+    await expect(processor.process(makeJob(ROW.id, 0, 3))).rejects.toThrow('circuit open');
 
-    expect(mockJobs.markFailed).toHaveBeenCalledWith(ROW.id, 'circuit open');
+    expect(mockJobs.markFailed).not.toHaveBeenCalled();
     expect(mockJobs.markCompleted).not.toHaveBeenCalled();
   });
 
-  // ── SLM returns 200 with error populated → treat as failure ─────────────
-
-  it('treats a 200 response with error populated as a failure', async () => {
+  it('on SLM 200-with-error and retries remaining: throws, does NOT markFailed', async () => {
     mockSlm.normalize.mockResolvedValueOnce({
       ...SUCCESS_RESPONSE,
       ocsf: null,
       error: 'validation rejected all candidates',
     });
 
-    await processor.process(makeJob(ROW.id));
-
-    expect(mockJobs.markFailed).toHaveBeenCalledWith(
-      ROW.id,
+    await expect(processor.process(makeJob(ROW.id, 0, 3))).rejects.toThrow(
       'validation rejected all candidates',
     );
+
+    expect(mockJobs.markFailed).not.toHaveBeenCalled();
+  });
+
+  it('on routing.route throwing with retries remaining: throws, does NOT markFailed', async () => {
+    mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
+    mockRouting.route.mockRejectedValueOnce(new Error('routing exploded'));
+
+    await expect(processor.process(makeJob(ROW.id, 0, 3))).rejects.toThrow('routing exploded');
+
+    expect(mockJobs.markFailed).not.toHaveBeenCalled();
     expect(mockJobs.markCompleted).not.toHaveBeenCalled();
   });
 
-  it('treats ocsf=null with no error message as a failure with a default message', async () => {
+  // ── retry semantics: final failure (last attempt) ───────────────────────
+
+  it('on SLM throw on the FINAL attempt: markFailed with attempt count, then throws', async () => {
+    mockSlm.normalize.mockRejectedValueOnce(new Error('circuit open'));
+
+    // attemptsMade=2, attempts=3 → this run is attempt 3 of 3
+    await expect(processor.process(makeJob(ROW.id, 2, 3))).rejects.toThrow('circuit open');
+
+    expect(mockJobs.markFailed).toHaveBeenCalledTimes(1);
+    const [calledId, calledError] = mockJobs.markFailed.mock.calls[0];
+    expect(calledId).toBe(ROW.id);
+    expect(calledError).toContain('circuit open');
+    expect(calledError).toContain('attempt 3/3');
+  });
+
+  it('on SLM 200-with-error on the FINAL attempt: markFailed with attempt count', async () => {
+    mockSlm.normalize.mockResolvedValueOnce({
+      ...SUCCESS_RESPONSE,
+      ocsf: null,
+      error: 'validation rejected all candidates',
+    });
+
+    await expect(processor.process(makeJob(ROW.id, 2, 3))).rejects.toThrow(
+      'validation rejected all candidates',
+    );
+
+    expect(mockJobs.markFailed).toHaveBeenCalledTimes(1);
+    expect(mockJobs.markFailed.mock.calls[0][1]).toContain('attempt 3/3');
+  });
+
+  it('on routing throw on the FINAL attempt: markFailed with attempt count', async () => {
+    mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
+    mockRouting.route.mockRejectedValueOnce(new Error('routing exploded'));
+
+    await expect(processor.process(makeJob(ROW.id, 2, 3))).rejects.toThrow('routing exploded');
+
+    expect(mockJobs.markFailed).toHaveBeenCalledTimes(1);
+    expect(mockJobs.markFailed.mock.calls[0][1]).toContain('attempt 3/3');
+    expect(mockJobs.markCompleted).not.toHaveBeenCalled();
+  });
+
+  it('on ocsf=null with no error message, final attempt: markFailed with default message + count', async () => {
     mockSlm.normalize.mockResolvedValueOnce({
       ...SUCCESS_RESPONSE,
       ocsf: null,
       error: null,
     });
 
-    await processor.process(makeJob(ROW.id));
+    await expect(processor.process(makeJob(ROW.id, 2, 3))).rejects.toThrow();
 
     expect(mockJobs.markFailed).toHaveBeenCalledTimes(1);
-    expect(mockJobs.markFailed.mock.calls[0][0]).toBe(ROW.id);
     expect(mockJobs.markFailed.mock.calls[0][1]).toMatch(/no OCSF/i);
+    expect(mockJobs.markFailed.mock.calls[0][1]).toContain('attempt 3/3');
   });
 
-  // ── 5. row not found / not in QUEUED → log + ack, do not crash ──────────
+  // ── non-actionable claim path ───────────────────────────────────────────
 
-  it('logs and returns when markActive throws (row missing or not QUEUED)', async () => {
+  it('logs and returns when markActive throws (row missing or terminal)', async () => {
     mockJobs.markActive.mockRejectedValueOnce(
-      new Error('markActive: job xxx not found or not in QUEUED state'),
+      new Error('markActive: job xxx not found or in terminal state'),
     );
 
     await expect(processor.process(makeJob(ROW.id))).resolves.toBeUndefined();
@@ -224,20 +279,23 @@ describe('NormalizeProcessor', () => {
     expect(mockJobs.markFailed).not.toHaveBeenCalled();
   });
 
-  // ── markCompleted/markFailed throwing must not crash the worker ─────────
+  // ── DB write race recovery — final attempt ──────────────────────────────
 
-  it('does not throw when markCompleted itself rejects', async () => {
+  it('does not crash when markCompleted itself rejects (sweep race)', async () => {
     mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
     mockJobs.markCompleted.mockRejectedValueOnce(new Error('row not ACTIVE'));
 
     await expect(processor.process(makeJob(ROW.id))).resolves.toBeUndefined();
   });
 
-  it('does not throw when markFailed itself rejects after an SLM error', async () => {
+  it('does not crash when markFailed itself rejects on the final attempt', async () => {
+    // Final attempt SLM throw + markFailed itself rejects.
+    // The processor should still throw the original SLM error to BullMQ
+    // (it wraps in handleFailure but then the call site re-throws).
     mockSlm.normalize.mockRejectedValueOnce(new Error('boom'));
     mockJobs.markFailed.mockRejectedValueOnce(new Error('db gone'));
 
-    await expect(processor.process(makeJob(ROW.id))).resolves.toBeUndefined();
+    await expect(processor.process(makeJob(ROW.id, 2, 3))).rejects.toThrow('boom');
   });
 });
 
