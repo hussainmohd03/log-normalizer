@@ -2,3 +2,5 @@ process.env.DATABASE_URL = 'postgresql://postgres:12345678@localhost:5432/lognor
 process.env.API_KEY = 'test-api-key'
 process.env.SLM_API = 'http://localhost:8000'
 process.env.REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379'
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-jwt-secret-value'
+process.env.JWT_TTL_HOURS = process.env.JWT_TTL_HOURS ?? '1'
