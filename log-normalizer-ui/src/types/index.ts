@@ -1,6 +1,6 @@
 /* -- Navigation -- */
 
-export type Page = 'dashboard' | 'review' | 'metrics' | 'health'
+export type Page = 'dashboard' | 'review' | 'metrics' | 'health' | 'users'
 
 /* -- Auth -- */
 
@@ -8,6 +8,22 @@ export type UserRole = 'ANALYST' | 'ADMIN'
 
 export interface AuthUser {
   email: string
+  role: UserRole
+}
+
+/* -- Users (admin management) -- */
+
+export interface User {
+  id: string
+  email: string
+  role: UserRole
+  createdAt: string
+  lastLoginAt: string | null
+}
+
+export interface CreateUserPayload {
+  email: string
+  password: string
   role: UserRole
 }
 

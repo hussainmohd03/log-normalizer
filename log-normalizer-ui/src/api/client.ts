@@ -1,6 +1,7 @@
 import type {
   AuthUser,
   CorrectionPayload,
+  CreateUserPayload,
   DecisionMetric,
   HealthStatus,
   MetricsOverview,
@@ -8,6 +9,7 @@ import type {
   ReviewQueueInfo,
   SourceMetric,
   TimelinePoint,
+  User,
 } from '../types'
 
 /* -- Config -- */
@@ -25,11 +27,7 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * 401 from a protected endpoint means the JWT cookie is missing or
- * expired. The auth context listens for this and clears its session
- * state, which sends the user back to the login screen.
- */
+
 export class UnauthorizedError extends ApiError {
   constructor(message = 'Unauthorized') {
     super(401, message)
@@ -94,4 +92,16 @@ export const endpoints = {
 
   // Health
   health: () => api<HealthStatus>('/health'),
+
+  // Users (admin only)
+  users: {
+    list: () => api<User[]>('/users'),
+    create: (payload: CreateUserPayload) =>
+      api<User>('/users', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    delete: (id: string) =>
+      api<void>(`/users/${id}`, { method: 'DELETE' }),
+  },
 }
