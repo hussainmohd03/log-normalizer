@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './api/auth'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Health from './pages/Health'
+import Jobs from './pages/Jobs'
 import Login from './pages/Login'
 import Metrics from './pages/Metrics'
 import ReviewQueue from './pages/ReviewQueue'
@@ -21,6 +22,7 @@ const AppShell = () => {
   return (
     <Layout activePage={page} onNavigate={setPage}>
       {page === 'dashboard' && <Dashboard />}
+      {page === 'jobs' && <Jobs onOpenReview={() => setPage('review')} />}
       {page === 'review' && <ReviewQueue />}
       {page === 'metrics' && <Metrics />}
       {page === 'health' && <Health />}

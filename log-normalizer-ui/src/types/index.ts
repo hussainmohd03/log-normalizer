@@ -1,6 +1,6 @@
 /* -- Navigation -- */
 
-export type Page = 'dashboard' | 'review' | 'metrics' | 'health' | 'users' | 'training-data'
+export type Page = 'dashboard' | 'review' | 'metrics' | 'health' | 'users' | 'training-data' | 'jobs'
 
 /* -- Auth -- */
 
@@ -131,6 +131,38 @@ export interface TrainingDataStats {
 export interface CorrectionPayload {
   /** reviewedBy is sourced from the JWT — never sent from the client. */
   correctedOcsf: Record<string, unknown>
+}
+
+/* -- Jobs browse -- */
+
+export type CorrectionType = 'AUTO_FLAGGED' | 'HUMAN_FLAGGED'
+
+export interface JobSummary {
+  id: string
+  source: string
+  status: string
+  decision: string | null
+  confidence: number | null
+  createdAt: string
+  completedAt: string | null
+  hasManualReview: boolean
+  wasSuperseded: boolean
+}
+
+export interface JobListFilters {
+  status?: string[]
+  decision?: string[]
+  source?: string[]
+  createdAfter?: string
+  createdBefore?: string
+  hasReview?: boolean
+  page?: number
+  pageSize?: number
+}
+
+export interface JobListResponse {
+  jobs: JobSummary[]
+  total: number
 }
 
 /* -- Health -- */

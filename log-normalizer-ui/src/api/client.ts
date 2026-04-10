@@ -4,6 +4,8 @@ import type {
   CreateUserPayload,
   DecisionMetric,
   HealthStatus,
+  JobListFilters,
+  JobListResponse,
   MetricsOverview,
   PendingReview,
   ReviewQueueInfo,
@@ -104,6 +106,28 @@ export const endpoints = {
       }),
     delete: (id: string) =>
       api<void>(`/users/${id}`, { method: 'DELETE' }),
+  },
+
+  // Jobs browse
+  jobs: {
+    list: (filters: JobListFilters = {}) => {
+      const params = new URLSearchParams()
+      if (filters.status?.length) filters.status.forEach(s => params.append('status', s))
+      if (filters.decision?.length) filters.decision.forEach(d => params.append('decision', d))
+      if (filters.source?.length) filters.source.forEach(s => params.append('source', s))
+      if (filters.createdAfter) params.set('createdAfter', filters.createdAfter)
+      if (filters.createdBefore) params.set('createdBefore', filters.createdBefore)
+      if (filters.hasReview !== undefined) params.set('hasReview', String(filters.hasReview))
+      if (filters.page) params.set('page', String(filters.page))
+      if (filters.pageSize) params.set('pageSize', String(filters.pageSize))
+      const qs = params.toString()
+      return api<JobListResponse>(`/jobs${qs ? `?${qs}` : ''}`)
+    },
+    flagForReview: (id: string, reason?: string) =>
+      api<{ id: string }>(`/jobs/${id}/flag-for-review`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      }),
   },
 
   // Training data export (admin only)
