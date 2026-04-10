@@ -3,12 +3,81 @@ import { NormalizeJob } from 'generated/prisma/client';
 import { PrismaService } from 'src/database/prisma.service';
 import { CompleteNormalizeJobDto } from './dto/complete-normalize-job.dto';
 import { CreateNormalizeJobDto } from './dto/create-normalize-job.dto';
+import { JobListFiltersDto } from './dto/job-list-filters.dto';
+
+export interface JobSummary {
+  id: string;
+  source: string;
+  status: string;
+  decision: string | null;
+  confidence: number | null;
+  createdAt: Date;
+  completedAt: Date | null;
+  hasManualReview: boolean;
+  wasSuperseded: boolean;
+}
 
 @Injectable()
 export class JobsService {
   private readonly logger = new Logger(JobsService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  async list(filters: JobListFiltersDto): Promise<{ jobs: JobSummary[]; total: number }> {
+    const page = filters.page ?? 1;
+    const pageSize = filters.pageSize ?? 25;
+
+    const where: Record<string, unknown> = {};
+
+    if (filters.status?.length) {
+      where.status = { in: filters.status };
+    }
+    if (filters.decision?.length) {
+      where.decision = { in: filters.decision };
+    }
+    if (filters.source?.length) {
+      where.source = { in: filters.source };
+    }
+    if (filters.createdAfter || filters.createdBefore) {
+      const createdAt: Record<string, Date> = {};
+      if (filters.createdAfter) createdAt.gte = filters.createdAfter;
+      if (filters.createdBefore) createdAt.lte = filters.createdBefore;
+      where.createdAt = createdAt;
+    }
+    if (filters.hasReview === true) {
+      where.manualReview = { isNot: null };
+    } else if (filters.hasReview === false) {
+      where.manualReview = { is: null };
+    }
+
+    const [rows, total] = await Promise.all([
+      this.prisma.normalizeJob.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          manualReview: { select: { id: true } },
+          ocsfEvents: { select: { id: true, supersedesEventId: true } },
+        },
+      }),
+      this.prisma.normalizeJob.count({ where }),
+    ]);
+
+    const jobs: JobSummary[] = rows.map((row) => ({
+      id: row.id,
+      source: row.source,
+      status: row.status,
+      decision: row.decision,
+      confidence: row.confidence,
+      createdAt: row.createdAt,
+      completedAt: row.completedAt,
+      hasManualReview: row.manualReview !== null,
+      wasSuperseded: row.ocsfEvents.some((e) => e.supersedesEventId !== null),
+    }));
+
+    return { jobs, total };
+  }
 
   async create(dto: CreateNormalizeJobDto): Promise<NormalizeJob> {
     return this.prisma.normalizeJob.create({
