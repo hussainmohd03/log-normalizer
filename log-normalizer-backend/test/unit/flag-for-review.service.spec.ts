@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { PrismaService } from 'src/database/prisma.service';
+import { SQSClientService } from 'src/delivery/sqs-client.service';
 import { ReviewService } from 'src/review/review.service';
 import { SLMService } from 'src/slm/slm.service';
 import { buildNormalizeJob } from 'test/factories';
@@ -19,6 +20,7 @@ describe('ReviewService.flagForReview', () => {
         PrismaService,
         ReviewService,
         { provide: SLMService, useValue: { validate: jest.fn().mockResolvedValue({ valid: true }) } },
+        { provide: SQSClientService, useValue: { publish: jest.fn().mockResolvedValue('mock-msg-id') } },
       ],
     }).compile();
 
