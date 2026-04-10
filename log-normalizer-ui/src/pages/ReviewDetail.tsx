@@ -25,6 +25,9 @@ const ReviewDetail = ({ review, onBack }: ReviewDetailProps) => {
   const color = confColor(review.confidence)
   const breakdown = review.confidenceBreakdown
   const errors = review.validationErrors ?? []
+  const fixes = review.normalizeJob.fixesApplied ?? []
+  const hallucinations = review.normalizeJob.hallucinationsStripped ?? []
+  const hasPostProcessActivity = fixes.length > 0 || hallucinations.length > 0
   const priorityBadge = review.priority === 'HIGH' ? 'red' : 'amber'
 
   const handleSubmit = async () => {
@@ -60,7 +63,21 @@ const ReviewDetail = ({ review, onBack }: ReviewDetailProps) => {
           {review.source}: {extractAlertTitle(review.slmOcsfOutput)}
         </h1>
         <span className={`badge badge--${priorityBadge}`}>{review.priority}</span>
+        {review.correctionType === 'HUMAN_FLAGGED' ? (
+          <span className="badge badge--teal">
+            Human-flagged{review.flaggedBy ? ` by ${review.flaggedBy.email}` : ''}
+          </span>
+        ) : (
+          <span className="badge badge--slate">Auto-flagged</span>
+        )}
       </div>
+
+      {review.reviewedAt && review.reviewedBy && (
+        <div className="correction-banner">
+          This job was corrected on {new Date(review.reviewedAt).toLocaleDateString()} by {review.reviewedBy}.
+          The corrected OCSF is being republished downstream.
+        </div>
+      )}
 
       <div className="detail-meta">
         <span>Source: {review.source}</span>
@@ -85,6 +102,14 @@ const ReviewDetail = ({ review, onBack }: ReviewDetailProps) => {
             <span>Schema: {breakdown.schema_validity.toFixed(2)}</span>
             <span>Coverage: {breakdown.field_coverage.toFixed(2)}</span>
             <span>Consistency: {breakdown.value_consistency.toFixed(2)}</span>
+            {!!breakdown.post_process_penalty && (
+              <span
+                className="confidence-breakdown-penalty"
+                title="Deduction applied by the post-processor for stripped hallucinations"
+              >
+                Penalty: {breakdown.post_process_penalty.toFixed(2)}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -94,6 +119,33 @@ const ReviewDetail = ({ review, onBack }: ReviewDetailProps) => {
         <div className="errors-box">
           <div className="errors-title">Validation errors</div>
           {errors.map((e, i) => <div key={i}>{e}</div>)}
+        </div>
+      )}
+
+      {/* -- Post-processor activity -- */}
+      {hasPostProcessActivity && (
+        <div className="postprocess-box" aria-label="Post-processor activity">
+          <div className="postprocess-title">Post-processor activity</div>
+          {fixes.length > 0 && (
+            <div className="postprocess-section">
+              <div className="postprocess-section-title">
+                <span aria-hidden="true">✓</span> Fixes applied ({fixes.length})
+              </div>
+              <ul className="postprocess-list postprocess-list--fixes">
+                {fixes.map((f, i) => <li key={i}>{f}</li>)}
+              </ul>
+            </div>
+          )}
+          {hallucinations.length > 0 && (
+            <div className="postprocess-section">
+              <div className="postprocess-section-title postprocess-section-title--warn">
+                <span aria-hidden="true">⚠</span> Hallucinations stripped ({hallucinations.length})
+              </div>
+              <ul className="postprocess-list postprocess-list--hallucinations">
+                {hallucinations.map((h, i) => <li key={i}>{h}</li>)}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

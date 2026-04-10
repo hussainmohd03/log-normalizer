@@ -272,6 +272,7 @@ html, body, #root {
 .badge--amber { background: var(--amber-bg); color: var(--amber); }
 .badge--red   { background: var(--red-bg);   color: var(--red); }
 .badge--teal  { background: var(--teal-bg);  color: var(--teal); }
+.badge--slate { background: #1e293b;        color: #94a3b8; }
 
 /* --------------------------------------
     StatusDot
@@ -1886,3 +1887,13 @@ html, body, #root {
 }
 
 .btn--sm { font-size: 12px; padding: 4px 10px; }
+
+.correction-banner {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}

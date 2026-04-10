@@ -95,8 +95,12 @@ export interface PendingReview {
   confidenceBreakdown: ConfidenceBreakdown | null
   validationErrors: string[] | null
   priority: 'NORMAL' | 'HIGH'
+  correctionType: CorrectionType
   slmOcsfOutput: Record<string, unknown>
   queuedAt: string
+  reviewedAt: string | null
+  reviewedBy: string | null
+  flaggedBy: { email: string } | null
   /**
    * Joined NormalizeJob row (set by ReviewService.getPending). The
    * `rawLog` field on the join is now a JSON value, not a wrapper

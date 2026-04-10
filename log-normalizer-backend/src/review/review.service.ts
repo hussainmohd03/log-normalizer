@@ -46,7 +46,10 @@ export class ReviewService {
         { confidence: 'asc' }, // lowest confidence first within same priority
       ],
       take: limit,
-      include: { normalizeJob: true },
+      include: {
+        normalizeJob: true,
+        flaggedBy: { select: { email: true } },
+      },
     });
   }
 
