@@ -3,6 +3,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedPrincipal } from 'src/auth/auth.types';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CorrectionDTO } from './dto/correction.dto';
+import { FlagForReviewDTO } from './dto/flag-for-review.dto';
 import { ReviewService } from './review.service';
 
 @UseGuards(JwtAuthGuard)
@@ -21,12 +22,27 @@ export class ReviewController {
     @Body() dto: CorrectionDTO,
     @CurrentUser() principal: AuthenticatedPrincipal,
   ) {
-    // JwtAuthGuard guarantees this, but be explicit — never let an
-    // API-key principal post a correction even via a future code path
-    // that loosens the guard.
     if (principal.kind !== 'user') {
       throw new ForbiddenException('Corrections require a user account');
     }
     return this.reviewService.submitCorrection(reviewId, dto.correctedOcsf, principal.email);
+  }
+}
+
+@UseGuards(JwtAuthGuard)
+@Controller('jobs')
+export class JobsFlagController {
+  constructor(private reviewService: ReviewService) {}
+
+  @Post(':id/flag-for-review')
+  async flagForReview(
+    @Param('id') jobId: string,
+    @Body() dto: FlagForReviewDTO,
+    @CurrentUser() principal: AuthenticatedPrincipal,
+  ) {
+    if (principal.kind !== 'user') {
+      throw new ForbiddenException('Flagging requires a user account');
+    }
+    return this.reviewService.flagForReview(jobId, principal.userId, dto.reason);
   }
 }

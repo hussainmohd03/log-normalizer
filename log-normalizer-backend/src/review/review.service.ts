@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DECISION, NormalizeJob, PRIORITY } from 'generated/prisma/client';
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
 import { PrismaService } from 'src/database/prisma.service';
@@ -111,5 +111,35 @@ export class ReviewService {
     }
 
     return updated;
+  }
+
+  async flagForReview(jobId: string, flaggedByUserId: string, reason?: string) {
+    const job = await this.prisma.normalizeJob.findUnique({ where: { id: jobId } });
+    if (!job) {
+      throw new NotFoundException(`Job ${jobId} not found`);
+    }
+
+    if (job.status !== 'COMPLETED') {
+      throw new BadRequestException(`Job ${jobId} is not completed (status: ${job.status})`);
+    }
+
+    try {
+      return await this.prisma.manualReview.create({
+        data: {
+          normalizeJobId: jobId,
+          source: job.source,
+          slmOcsfOutput: job.ocsf ?? {},
+          confidence: job.confidence ?? 0,
+          correctionType: 'HUMAN_FLAGGED',
+          flaggedById: flaggedByUserId,
+          validationErrors: reason ? [reason] : undefined,
+        },
+      });
+    } catch (err: any) {
+      if (err.code === 'P2002') {
+        throw new ConflictException(`Job ${jobId} already has a review`);
+      }
+      throw err;
+    }
   }
 }
