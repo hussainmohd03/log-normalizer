@@ -2,13 +2,18 @@ import { BadRequestException, ConflictException, Injectable, Logger, NotFoundExc
 import { DECISION, NormalizeJob, PRIORITY } from 'generated/prisma/client';
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface';
 import { PrismaService } from 'src/database/prisma.service';
+import { SQSClientService } from 'src/delivery/sqs-client.service';
 import { SLMService } from 'src/slm/slm.service';
 
 @Injectable()
 export class ReviewService {
   private readonly logger = new Logger(ReviewService.name);
 
-  constructor(private prisma: PrismaService, private slmService: SLMService) {}
+  constructor(
+    private prisma: PrismaService,
+    private slmService: SLMService,
+    private sqsClient: SQSClientService,
+  ) {}
 
 
   async queue(job: NormalizeJob, slmResponse: SLMResponse, priority: PRIORITY): Promise<void> {
@@ -67,35 +72,28 @@ export class ReviewService {
       throw new BadRequestException(`Review ${reviewId} already corrected`);
     }
 
-    const updated = await this.prisma.manualReview.update({
-      where: { id: reviewId },
-      data: {
-        correctedOCSF: correctedOcsf,
-        reviewedBy: reviewer,
-        reviewedAt: new Date(),
-      },
-    });
-
-    const existing = await this.prisma.oCSFEvent.findFirst({
-      where: { normalizeJobId: updated.normalizeJobId },
-      orderBy: { normalizedAt: 'desc' },
-      select: { id: true },
-    });
-    if (existing) {
-      await this.prisma.oCSFEvent.update({
-        where: { id: existing.id },
+    // Atomic transaction: update review, create superseding event, link old event
+    const { updated, newEvent, oldEventId } = await this.prisma.$transaction(async (tx) => {
+      const updatedReview = await tx.manualReview.update({
+        where: { id: reviewId },
         data: {
-          ocsfJson: correctedOcsf,
-          confidence: 1.0,
-          decision: DECISION.CORRECTED,
-          publishedToSqs: false,
-          sqsMessageId: null,
+          correctedOCSF: correctedOcsf,
+          reviewedBy: reviewer,
+          reviewedAt: new Date(),
         },
       });
-    } else {
-      await this.prisma.oCSFEvent.create({
+
+      // Find the current (non-superseded) event for this job
+      const oldEvent = await tx.oCSFEvent.findFirst({
+        where: { normalizeJobId: updatedReview.normalizeJobId },
+        orderBy: { normalizedAt: 'desc' },
+        select: { id: true },
+      });
+
+      // Create the new superseding event
+      const created = await tx.oCSFEvent.create({
         data: {
-          normalizeJobId: updated.normalizeJobId,
+          normalizeJobId: updatedReview.normalizeJobId,
           classUid: correctedOcsf['class_uid'],
           className: correctedOcsf['class_name'],
           activityId: correctedOcsf['activity_id'],
@@ -106,8 +104,29 @@ export class ReviewService {
           decision: DECISION.CORRECTED,
           processingTime: 0,
           publishedToSqs: false,
+          supersedesEventId: oldEvent?.id ?? null,
         },
       });
+
+      return { updated: updatedReview, newEvent: created, oldEventId: oldEvent?.id ?? null };
+    });
+
+    // SQS publish AFTER commit — if it fails, log and continue
+    try {
+      await this.sqsClient.publish(
+        correctedOcsf,
+        undefined,
+        {
+          IsCorrection: 'true',
+          SupersedesEventId: oldEventId ?? '',
+          ManualReviewId: reviewId,
+        },
+      );
+    } catch (err: any) {
+      this.logger.warn(
+        { reviewId, newEventId: newEvent.id, err: err.message },
+        'review.correction_sqs_publish_failed',
+      );
     }
 
     return updated;

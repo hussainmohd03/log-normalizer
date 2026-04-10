@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config'
 import { Test } from '@nestjs/testing'
 import { DECISION, PRIORITY } from 'generated/prisma/enums'
 import { PrismaService } from 'src/database/prisma.service'
+import { SQSClientService } from 'src/delivery/sqs-client.service'
 import { ReviewService } from 'src/review/review.service'
 import { SLMService } from 'src/slm/slm.service'
 import { buildCorrectedOcsf, buildNormalizeJob, buildSLMResponse } from 'test/factories'
@@ -12,9 +13,11 @@ describe('ReviewService', () => {
   let reviewService: ReviewService
   let prisma: PrismaService
   let mockSLM: { validate: jest.Mock }
+  let mockSQS: { publish: jest.Mock }
 
   beforeAll(async () => {
     mockSLM = { validate: jest.fn() }
+    mockSQS = { publish: jest.fn().mockResolvedValue('mock-msg-id') }
 
     const module = await Test.createTestingModule({
       imports: [ConfigModule.forRoot()],
@@ -22,6 +25,7 @@ describe('ReviewService', () => {
         ReviewService,
         PrismaService,
         { provide: SLMService, useValue: mockSLM },
+        { provide: SQSClientService, useValue: mockSQS },
       ],
     }).compile()
 
@@ -32,6 +36,7 @@ describe('ReviewService', () => {
   beforeEach(async () => {
     await cleanDatabase(prisma)
     mockSLM.validate.mockClear()
+    mockSQS.publish.mockClear().mockResolvedValue('mock-msg-id')
   })
 
   afterAll(async () => {
@@ -150,6 +155,118 @@ describe('ReviewService', () => {
     await expect(
       reviewService.submitCorrection(review.id, correctedOcsf, 'Hussain'),
     ).rejects.toThrow(BadRequestException)
+  })
+
+  // ── Supersedes chain tests (Step 4) ────────────────────────────────
+
+  it('submitCorrection on a previously-accepted job: creates superseding OCSFEvent', async () => {
+    mockSLM.validate.mockResolvedValue({ valid: true, errors: [] })
+
+    // 1. Create COMPLETED/accept job
+    const job = await prisma.normalizeJob.create({
+      data: buildNormalizeJob({ status: 'COMPLETED', decision: 'accept' }),
+    })
+
+    // 2. Insert original OCSFEvent
+    const original = await prisma.oCSFEvent.create({
+      data: {
+        normalizeJobId: job.id,
+        classUid: 2004,
+        className: 'Detection Finding',
+        ocsfJson: { class_uid: 2004 },
+        confidence: 0.9,
+        decision: DECISION.ACCEPT,
+        processingTime: 100,
+        publishedToSqs: true,
+        sqsMessageId: 'original-msg',
+      },
+    })
+
+    // 3. Create HUMAN_FLAGGED ManualReview
+    const review = await prisma.manualReview.create({
+      data: {
+        normalizeJobId: job.id,
+        source: job.source,
+        slmOcsfOutput: { class_uid: 2004 },
+        confidence: 0.9,
+        correctionType: 'HUMAN_FLAGGED',
+      },
+    })
+
+    // 4. Submit correction
+    const correctedOcsf = buildCorrectedOcsf()
+    await reviewService.submitCorrection(review.id, correctedOcsf, 'analyst@test.com')
+
+    // 5. TWO OCSFEvent rows now exist for the same normalizeJobId
+    const events = await prisma.oCSFEvent.findMany({
+      where: { normalizeJobId: job.id },
+      orderBy: { normalizedAt: 'asc' },
+    })
+    expect(events).toHaveLength(2)
+
+    // 6. Original has supersededBy pointing to the new one (via the relation)
+    const newEvent = events.find(e => e.supersedesEventId === original.id)!
+    expect(newEvent).toBeDefined()
+
+    // 7. New one's supersedesEventId = original's id
+    expect(newEvent.supersedesEventId).toBe(original.id)
+
+    // 8. New one has no supersededBy (it's current)
+    const supersedingNew = await prisma.oCSFEvent.findFirst({
+      where: { supersedesEventId: newEvent.id },
+    })
+    expect(supersedingNew).toBeNull()
+
+    // 9. SQS publish was called with correction attributes
+    expect(mockSQS.publish).toHaveBeenCalledTimes(1)
+    expect(mockSQS.publish).toHaveBeenCalledWith(
+      correctedOcsf,
+      undefined,
+      {
+        IsCorrection: 'true',
+        SupersedesEventId: original.id,
+        ManualReviewId: review.id,
+      },
+    )
+  })
+
+  it('submitCorrection on a job with no original OCSFEvent: supersedesEventId is null', async () => {
+    mockSLM.validate.mockResolvedValue({ valid: true, errors: [] })
+    const { job, review } = await createPendingReview(prisma, reviewService)
+    const correctedOcsf = buildCorrectedOcsf()
+
+    await reviewService.submitCorrection(review.id, correctedOcsf, 'analyst@test.com')
+
+    const events = await prisma.oCSFEvent.findMany({ where: { normalizeJobId: job.id } })
+    expect(events).toHaveLength(1)
+    expect(events[0].supersedesEventId).toBeNull()
+
+    expect(mockSQS.publish).toHaveBeenCalledWith(
+      correctedOcsf,
+      undefined,
+      {
+        IsCorrection: 'true',
+        SupersedesEventId: '',
+        ManualReviewId: review.id,
+      },
+    )
+  })
+
+  it('SQS publish fails: DB transaction still committed, warning logged', async () => {
+    mockSLM.validate.mockResolvedValue({ valid: true, errors: [] })
+    mockSQS.publish.mockRejectedValueOnce(new Error('SQS down'))
+
+    const { job, review } = await createPendingReview(prisma, reviewService)
+    const correctedOcsf = buildCorrectedOcsf()
+
+    // Should NOT throw despite SQS failure
+    const updated = await reviewService.submitCorrection(review.id, correctedOcsf, 'analyst@test.com')
+    expect(updated.correctedOCSF).toEqual(correctedOcsf)
+
+    // DB transaction committed
+    const events = await prisma.oCSFEvent.findMany({ where: { normalizeJobId: job.id } })
+    expect(events).toHaveLength(1)
+    expect(events[0].decision).toBe(DECISION.CORRECTED)
   })
 
   async function createPendingReview(prisma: PrismaService, reviewService: ReviewService) {
