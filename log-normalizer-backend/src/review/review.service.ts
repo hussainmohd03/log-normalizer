@@ -10,17 +10,7 @@ export class ReviewService {
 
   constructor(private prisma: PrismaService, private slmService: SLMService) {}
 
-  /**
-   * Queues a job for manual review. UPSERTs by normalizeJobId so a BullMQ
-   * retry replays the same logical operation without producing duplicate
-   * review rows. Latest attempt's data wins.
-   *
-   * If the row was already reviewed (reviewedAt set, correctedOCSF written)
-   * we deliberately overwrite the slmOcsfOutput/confidence/breakdown but
-   * leave the reviewer's correction intact. The reviewer's work is in the
-   * `correctedOCSF` / `reviewedBy` / `reviewedAt` columns which we don't
-   * touch in the update branch.
-   */
+
   async queue(job: NormalizeJob, slmResponse: SLMResponse, priority: PRIORITY): Promise<void> {
     const data = {
       source: job.source,
@@ -86,29 +76,39 @@ export class ReviewService {
       },
     });
 
-    await this.prisma.oCSFEvent.upsert({
+    const existing = await this.prisma.oCSFEvent.findFirst({
       where: { normalizeJobId: updated.normalizeJobId },
-      update: {
-        ocsfJson: correctedOcsf,
-        confidence: 1.0,
-        decision: DECISION.CORRECTED,
-        publishedToSqs: false,
-        sqsMessageId: null,
-      },
-      create: {
-        normalizeJobId: updated.normalizeJobId,
-        classUid: correctedOcsf['class_uid'],
-        className: correctedOcsf['class_name'],
-        activityId: correctedOcsf['activity_id'],
-        activityName: correctedOcsf['activity_name'],
-        severityId: correctedOcsf['severity_id'],
-        ocsfJson: correctedOcsf,
-        confidence: 1.0,
-        decision: DECISION.CORRECTED,
-        processingTime: 0,
-        publishedToSqs: false,
-      },
+      orderBy: { normalizedAt: 'desc' },
+      select: { id: true },
     });
+    if (existing) {
+      await this.prisma.oCSFEvent.update({
+        where: { id: existing.id },
+        data: {
+          ocsfJson: correctedOcsf,
+          confidence: 1.0,
+          decision: DECISION.CORRECTED,
+          publishedToSqs: false,
+          sqsMessageId: null,
+        },
+      });
+    } else {
+      await this.prisma.oCSFEvent.create({
+        data: {
+          normalizeJobId: updated.normalizeJobId,
+          classUid: correctedOcsf['class_uid'],
+          className: correctedOcsf['class_name'],
+          activityId: correctedOcsf['activity_id'],
+          activityName: correctedOcsf['activity_name'],
+          severityId: correctedOcsf['severity_id'],
+          ocsfJson: correctedOcsf,
+          confidence: 1.0,
+          decision: DECISION.CORRECTED,
+          processingTime: 0,
+          publishedToSqs: false,
+        },
+      });
+    }
 
     return updated;
   }

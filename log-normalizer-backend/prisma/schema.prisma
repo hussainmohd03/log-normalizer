@@ -33,29 +33,40 @@ model User {
   updatedAt       DateTime         @updatedAt
   lastLoginAt     DateTime?
   trainingExports TrainingExport[]
+  flaggedReviews  ManualReview[]
 }
 
 model OCSFEvent {
-  id             String       @id @default(uuid())
-  normalizeJobId String       @unique
-  normalizeJob   NormalizeJob @relation(fields: [normalizeJobId], references: [id], onDelete: Cascade)
-  classUid       Int
-  className      String
-  activityId     Int?
-  activityName   String?
-  severityId     Int?
-  ocsfJson       Json
-  confidence     Float
-  decision       DECISION
-  processingTime Int
-  normalizedAt   DateTime     @default(now())
-  publishedToSqs Boolean      @default(false)
-  sqsMessageId   String?
+  id                String       @id @default(uuid())
+  normalizeJobId    String
+  normalizeJob      NormalizeJob  @relation(fields: [normalizeJobId], references: [id], onDelete: Cascade)
+  classUid          Int
+  className         String
+  activityId        Int?
+  activityName      String?
+  severityId        Int?
+  ocsfJson          Json
+  confidence        Float
+  decision          DECISION
+  processingTime    Int
+  normalizedAt      DateTime     @default(now())
+  publishedToSqs    Boolean      @default(false)
+  sqsMessageId      String?
+  supersedesEventId String?      @unique
+  supersedes        OCSFEvent?   @relation("Supersedes", fields: [supersedesEventId], references: [id], onDelete: SetNull)
+  supersededBy      OCSFEvent?   @relation("Supersedes")
 
+  @@index([normalizeJobId])
   @@index([classUid, normalizedAt])
   @@index([confidence])
   @@index([decision])
   @@index([publishedToSqs])
+  @@index([supersedesEventId])
+}
+
+enum CorrectionType {
+  AUTO_FLAGGED
+  HUMAN_FLAGGED
 }
 
 enum PRIORITY {
@@ -73,6 +84,9 @@ model ManualReview {
   confidenceBreakdown Json?
   validationErrors    Json?
   priority            PRIORITY        @default(NORMAL)
+  correctionType      CorrectionType  @default(AUTO_FLAGGED)
+  flaggedById         String?
+  flaggedBy           User?           @relation(fields: [flaggedById], references: [id], onDelete: SetNull)
   queuedAt            DateTime        @default(now())
   reviewedAt          DateTime?
   reviewedBy          String?
@@ -84,6 +98,7 @@ model ManualReview {
   @@index([reviewedAt])
   @@index([priority, queuedAt])
   @@index([trainingExportId])
+  @@index([correctionType])
 }
 
 model TrainingExport {
@@ -142,7 +157,7 @@ model NormalizeJob {
   updatedAt              DateTime       @updatedAt
   startedAt              DateTime?
   completedAt            DateTime?
-  ocsfEvent              OCSFEvent?
+  ocsfEvents             OCSFEvent[]
   manualReview           ManualReview?
 
   @@index([status])

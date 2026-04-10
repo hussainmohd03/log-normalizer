@@ -16,15 +16,7 @@ export class RoutingService {
     private SQSClient: SQSClientService,
   ) {}
 
-  /**
-   * Called by the worker after a successful SLM call. Writes the
-   * downstream artifacts (OCSFEvent + ProcessingMetric, optional
-   * ManualReview) and triggers the SQS publish for accept decisions.
-   *
-   * The NormalizeJob row's status is owned by the worker — this method
-   * does not touch it. If routing throws, the worker maps the failure
-   * onto markFailed.
-   */
+
   async route(job: NormalizeJob, slmResponse: SLMResponse): Promise<void> {
     await this.storeTransaction(job, slmResponse);
 
@@ -48,10 +40,7 @@ export class RoutingService {
   }
 
   private async handleAccept(job: NormalizeJob, slmResponse: SLMResponse): Promise<void> {
-    // Pass the jobId as the SQS dedup id. If the configured queue is FIFO,
-    // SQSClientService attaches MessageDeduplicationId so retries don't
-    // produce duplicate downstream events. On a standard queue the dedup id
-    // is ignored — see SQSClientService for the documented limitation.
+
     const messageId = await nonBlocking(
       () => this.SQSClient.publish(slmResponse.ocsf!, job.id),
       `${job.source}/sqs`,
@@ -60,11 +49,18 @@ export class RoutingService {
 
     if (messageId) {
       await nonBlocking(
-        () =>
-          this.prisma.oCSFEvent.update({
-            where: { normalizeJobId: job.id },
-            data: { publishedToSqs: true, sqsMessageId: messageId },
-          }),
+        async () => {
+          const event = await this.prisma.oCSFEvent.findFirst({
+            where: { normalizeJobId: job.id, supersedesEventId: null },
+            select: { id: true },
+          });
+          if (event) {
+            await this.prisma.oCSFEvent.update({
+              where: { id: event.id },
+              data: { publishedToSqs: true, sqsMessageId: messageId },
+            });
+          }
+        },
         `${job.source}/sqs-track`,
         this.logger,
       );
@@ -79,58 +75,58 @@ export class RoutingService {
     await this.reviewService.queue(job, slmResponse, priority);
   }
 
-  /**
-   * Writes downstream artifacts. UPSERTs by normalizeJobId so a BullMQ
-   * retry replays the same logical operation without producing duplicate
-   * OCSFEvent or ProcessingMetric rows. Latest attempt's data wins.
-   */
+
   private async storeTransaction(job: NormalizeJob, slmResponse: SLMResponse): Promise<void> {
     const decision = this.mapDecision(slmResponse.decision);
-    const ops: Promise<unknown>[] = [];
 
-    if (slmResponse.ocsf) {
-      const ocsfData = {
-        classUid: slmResponse.ocsf['class_uid'],
-        className: slmResponse.ocsf['class_name'],
-        activityId: slmResponse.ocsf['activity_id'],
-        activityName: slmResponse.ocsf['activity_name'],
-        severityId: slmResponse.ocsf['severity_id'],
-        ocsfJson: slmResponse.ocsf,
+    await this.prisma.$transaction(async (tx) => {
+      if (slmResponse.ocsf) {
+        const ocsfData = {
+          classUid: slmResponse.ocsf['class_uid'],
+          className: slmResponse.ocsf['class_name'],
+          activityId: slmResponse.ocsf['activity_id'],
+          activityName: slmResponse.ocsf['activity_name'],
+          severityId: slmResponse.ocsf['severity_id'],
+          ocsfJson: slmResponse.ocsf,
+          confidence: slmResponse.confidence,
+          decision,
+          processingTime: slmResponse.processing_time_ms,
+        };
+        const existing = await tx.oCSFEvent.findFirst({
+          where: { normalizeJobId: job.id },
+          select: { id: true },
+        });
+        if (existing) {
+          await tx.oCSFEvent.update({
+            where: { id: existing.id },
+            data: {
+              ...ocsfData,
+              // Reset publish state on retry — the new payload may differ
+              // from what was already sent to SQS, so we re-publish.
+              publishedToSqs: false,
+              sqsMessageId: null,
+            },
+          });
+        } else {
+          await tx.oCSFEvent.create({
+            data: { normalizeJobId: job.id, ...ocsfData },
+          });
+        }
+      }
+
+      const metricData = {
+        source: job.source,
         confidence: slmResponse.confidence,
         decision,
-        processingTime: slmResponse.processing_time_ms,
+        latencyMs: slmResponse.processing_time_ms,
+        success: slmResponse.decision === 'accept',
       };
-      ops.push(
-        this.prisma.oCSFEvent.upsert({
-          where: { normalizeJobId: job.id },
-          create: { normalizeJobId: job.id, ...ocsfData },
-          update: {
-            ...ocsfData,
-            // Reset publish state on retry — the new payload may differ
-            // from what was already sent to SQS, so we re-publish.
-            publishedToSqs: false,
-            sqsMessageId: null,
-          },
-        }),
-      );
-    }
-
-    const metricData = {
-      source: job.source,
-      confidence: slmResponse.confidence,
-      decision,
-      latencyMs: slmResponse.processing_time_ms,
-      success: slmResponse.decision === 'accept',
-    };
-    ops.push(
-      this.prisma.processingMetric.upsert({
+      await tx.processingMetric.upsert({
         where: { normalizeJobId: job.id },
         create: { normalizeJobId: job.id, ...metricData },
         update: metricData,
-      }),
-    );
-
-    await this.prisma.$transaction(ops as never);
+      });
+    });
   }
 
   private mapDecision(decision: string): DECISION {

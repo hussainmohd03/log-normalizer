@@ -48,7 +48,7 @@ describe('RoutingService', () => {
 
     await routingService.route(job, slmResponse)
 
-    const ocsf = await prisma.oCSFEvent.findUnique({ where: { normalizeJobId: job.id } })
+    const ocsf = await prisma.oCSFEvent.findFirst({ where: { normalizeJobId: job.id } })
     expect(ocsf).not.toBeNull()
     expect(ocsf!.confidence).toBe(0.92)
 
@@ -62,7 +62,7 @@ describe('RoutingService', () => {
 
     await routingService.route(job, slmResponse)
 
-    const ocsf = await prisma.oCSFEvent.findUnique({ where: { normalizeJobId: job.id } })
+    const ocsf = await prisma.oCSFEvent.findFirst({ where: { normalizeJobId: job.id } })
     expect(ocsf).not.toBeNull()
     expect(ocsf!.confidence).toBe(0.72)
 
@@ -76,7 +76,7 @@ describe('RoutingService', () => {
 
     await routingService.route(job, slmResponse)
 
-    const ocsf = await prisma.oCSFEvent.findUnique({ where: { normalizeJobId: job.id } })
+    const ocsf = await prisma.oCSFEvent.findFirst({ where: { normalizeJobId: job.id } })
     expect(ocsf).toBeNull()
 
     expect(mockReview.queue).toHaveBeenCalledWith(job, slmResponse, PRIORITY.HIGH)
@@ -92,7 +92,7 @@ describe('RoutingService', () => {
     await routingService.route(job, slmResponse)
 
     // Transaction still succeeded despite SQS failure
-    const ocsf = await prisma.oCSFEvent.findUnique({ where: { normalizeJobId: job.id } })
+    const ocsf = await prisma.oCSFEvent.findFirst({ where: { normalizeJobId: job.id } })
     expect(ocsf).not.toBeNull()
     expect(ocsf!.publishedToSqs).toBe(false)
   })
@@ -143,8 +143,9 @@ describe('RoutingService', () => {
 
     // First attempt: publish succeeds, OCSFEvent gets publishedToSqs=true
     await routingService.route(job, buildSLMResponse({ decision: 'accept' }))
+    const firstEvent = await prisma.oCSFEvent.findFirst({ where: { normalizeJobId: job.id } })
     await prisma.oCSFEvent.update({
-      where: { normalizeJobId: job.id },
+      where: { id: firstEvent!.id },
       data: { publishedToSqs: true, sqsMessageId: 'first-msg-id' },
     })
 
@@ -153,7 +154,7 @@ describe('RoutingService', () => {
     // payload.
     await routingService.route(job, buildSLMResponse({ decision: 'accept', confidence: 0.99 }))
 
-    const ocsf = await prisma.oCSFEvent.findUnique({
+    const ocsf = await prisma.oCSFEvent.findFirst({
       where: { normalizeJobId: job.id },
     })
     // handleAccept ran a fresh publish on the second route() call, so

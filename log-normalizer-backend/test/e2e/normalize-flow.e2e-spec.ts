@@ -1,19 +1,24 @@
 // test/e2e/normalize-flow.e2e-spec.ts
 //
 // Full async-pipeline integration test:
-//   POST /api/normalize → Postgres → BullMQ/Redis → Worker → Postgres → polling endpoint
+//   POST /api/logs/ingest → Postgres → BullMQ/Redis → Worker → Postgres
 //
 // What is real:
 //   - Postgres (via PrismaService)
 //   - Redis + BullMQ (real queue, real worker)
-//   - HTTP layer via supertest
+//   - HTTP layer via supertest (for the ingest endpoint only)
 //
 // What is mocked:
 //   - SLMService (the only external dependency we don't want in CI)
+//   - SQSClientService (so the routing chain doesn't need AWS creds)
+//
+// Job state is observed by polling Prisma directly — there is no
+// HTTP-side jobs endpoint anymore. The worker contract is what we're
+// testing, not the (deleted) read API.
 //
 // PREREQUISITES (must be running before `npm run test:e2e`):
-//   - Postgres at DATABASE_URL (default postgresql://postgres:12345678@localhost:5432/lognormalizer_test)
-//   - Redis    at REDIS_URL    (default redis://localhost:6379)
+//   - Postgres at DATABASE_URL
+//   - Redis    at REDIS_URL
 //
 // If either is unreachable, the suite fails fast in beforeAll with a
 // clear message instead of timing out on BullMQ's reconnect loop.
@@ -25,18 +30,14 @@ import cookieParser from 'cookie-parser'
 import IORedis from 'ioredis'
 import request from 'supertest'
 import { AppModule } from 'src/app.module'
-import { AuthService } from 'src/auth/auth.service'
 import { PrismaService } from 'src/database/prisma.service'
 import { SQSClientService } from 'src/delivery/sqs-client.service'
 import { NORMALIZE_QUEUE } from 'src/queue/queue-names'
 import { SLMService } from 'src/slm/slm.service'
 import { WorkerModule } from 'src/worker/worker.module'
-import { JobStatus, UserRole } from 'generated/prisma/client'
+import { NormalizeJob } from 'generated/prisma/client'
 import { SLMResponse } from 'src/common/interfaces/slm-response.interface'
 import { cleanDatabase } from 'test/helper/prisma-test'
-
-const TEST_USER_EMAIL = 'flow-analyst@e2e.test'
-const TEST_USER_PASSWORD = 'flow-test-pw-1'
 
 const SUCCESS_RESPONSE: SLMResponse = {
   ocsf: {
@@ -64,16 +65,6 @@ const SAMPLE_PAYLOAD = {
   rawContent: { alert_id: 'e2e-1', severity: 'high' },
 }
 
-interface JobResponseShape {
-  jobId: string
-  status: JobStatus
-  parentJobId: string | null
-  result: { decision: string; confidence: number } | null
-  error: string | null
-  fixesApplied: string[]
-  hallucinationsStripped: string[]
-}
-
 describe('Normalize async flow E2E', () => {
   let httpApp: INestApplication
   let workerApp: TestingModule
@@ -81,7 +72,6 @@ describe('Normalize async flow E2E', () => {
   let queue: Queue
   let slmMock: { normalize: jest.Mock }
   let sqsMock: { publish: jest.Mock }
-  let authCookie: string
 
   beforeAll(async () => {
     // Fail fast if Redis is unreachable so we get a clear error instead
@@ -131,25 +121,6 @@ describe('Normalize async flow E2E', () => {
     prisma = httpModule.get(PrismaService)
     queue = httpModule.get<Queue>(getQueueToken(NORMALIZE_QUEUE))
 
-    // Seed an analyst user and capture an auth cookie for the JWT-only
-    // retry endpoint. Idempotent — survives across runs.
-    const authService = httpModule.get(AuthService)
-    try {
-      await authService.createUser({
-        email: TEST_USER_EMAIL,
-        password: TEST_USER_PASSWORD,
-        role: UserRole.ANALYST,
-      })
-    } catch {
-      /* user already exists from a prior run */
-    }
-    const loginRes = await request(httpApp.getHttpServer())
-      .post('/api/auth/login')
-      .send({ email: TEST_USER_EMAIL, password: TEST_USER_PASSWORD })
-      .expect(200)
-    authCookie = loginRes.headers['set-cookie']?.[0] ?? ''
-    if (!authCookie) throw new Error('Login did not return an auth cookie')
-
     // ── Worker context (WorkerModule) ──────────────────────────────────
     // Same SLM mock instance — both contexts see the same controlled
     // behaviour, and per-test mockResolvedValue / mockRejectedValue
@@ -194,15 +165,10 @@ describe('Normalize async flow E2E', () => {
     return res.body.jobId as string
   }
 
-  const fetchJob = async (jobId: string): Promise<JobResponseShape> => {
-    const res = await request(httpApp.getHttpServer())
-      .get(`/api/normalize/jobs/${jobId}`)
-      .set('x-api-key', process.env.API_KEY!)
-      .expect(200)
-    return res.body as JobResponseShape
-  }
+  const fetchJob = (jobId: string): Promise<NormalizeJob> =>
+    prisma.normalizeJob.findUniqueOrThrow({ where: { id: jobId } })
 
-  const waitForTerminal = async (jobId: string, timeoutMs = 15_000): Promise<JobResponseShape> => {
+  const waitForTerminal = async (jobId: string, timeoutMs = 15_000): Promise<NormalizeJob> => {
     const deadline = Date.now() + timeoutMs
     while (Date.now() < deadline) {
       const job = await fetchJob(jobId)
@@ -221,9 +187,8 @@ describe('Normalize async flow E2E', () => {
     const final = await waitForTerminal(jobId)
 
     expect(final.status).toBe('COMPLETED')
-    expect(final.result).not.toBeNull()
-    expect(final.result?.decision).toBe('accept')
-    expect(final.result?.confidence).toBeCloseTo(0.92)
+    expect(final.decision).toBe('accept')
+    expect(final.confidence).toBeCloseTo(0.92)
     expect(final.error).toBeNull()
     expect(slmMock.normalize).toHaveBeenCalledTimes(1)
     expect(slmMock.normalize).toHaveBeenCalledWith({
@@ -233,7 +198,7 @@ describe('Normalize async flow E2E', () => {
     })
 
     // Routing chain ran: OCSFEvent + ProcessingMetric exist for the job
-    const ocsf = await prisma.oCSFEvent.findUnique({ where: { normalizeJobId: jobId } })
+    const ocsf = await prisma.oCSFEvent.findFirst({ where: { normalizeJobId: jobId } })
     expect(ocsf).not.toBeNull()
     expect(ocsf!.confidence).toBeCloseTo(0.92)
 
@@ -244,7 +209,7 @@ describe('Normalize async flow E2E', () => {
     expect(ocsf!.sqsMessageId).toBe('mock-msg-id')
   }, 30_000)
 
-  it('post-processor audit trail survives the full pipeline and is exposed via GET', async () => {
+  it('post-processor audit trail survives the full pipeline', async () => {
     slmMock.normalize.mockResolvedValueOnce({
       ...SUCCESS_RESPONSE,
       fixes_applied: [
@@ -267,15 +232,6 @@ describe('Normalize async flow E2E', () => {
     expect(final.hallucinationsStripped).toEqual([
       'stripped hallucinated device.hostname (looks like email): user@example.com',
     ])
-
-    const row = await prisma.normalizeJob.findUniqueOrThrow({ where: { id: jobId } })
-    expect(row.fixesApplied).toEqual([
-      'moved finding_info.severity_id to root',
-      'forced metadata.version to 1.7.0',
-    ])
-    expect(row.hallucinationsStripped).toEqual([
-      'stripped hallucinated device.hostname (looks like email): user@example.com',
-    ])
   }, 30_000)
 
   it('SLM throws on all 3 attempts → worker marks the row FAILED with attempt count', async () => {
@@ -286,7 +242,7 @@ describe('Normalize async flow E2E', () => {
     const final = await waitForTerminal(jobId, 60_000)
 
     expect(final.status).toBe('FAILED')
-    expect(final.result).toBeNull()
+    expect(final.decision).toBeNull()
     expect(final.error).toContain('circuit open')
     expect(final.error).toContain('attempt 3/3')
     // SLM was actually called 3 times (Week 2 retry policy)
@@ -304,7 +260,7 @@ describe('Normalize async flow E2E', () => {
     const final = await waitForTerminal(jobId, 60_000)
 
     expect(final.status).toBe('FAILED')
-    expect(final.result).toBeNull()
+    expect(final.decision).toBeNull()
     expect(final.error).toContain('validation rejected all candidates')
     expect(final.error).toContain('attempt 3/3')
   }, 90_000)
@@ -320,96 +276,10 @@ describe('Normalize async flow E2E', () => {
 
     expect(final.status).toBe('COMPLETED')
     expect(final.error).toBeNull()
-    expect(final.result?.decision).toBe('accept')
+    expect(final.decision).toBe('accept')
     expect(slmMock.normalize).toHaveBeenCalledTimes(3)
 
     // attempts column reflects all 3 claim attempts
-    const row = await prisma.normalizeJob.findUniqueOrThrow({ where: { id: jobId } })
-    expect(row.attempts).toBe(3)
+    expect(final.attempts).toBe(3)
   }, 90_000)
-
-  // ── Retry endpoint ───────────────────────────────────────────────────
-
-  it('full retry flow: original FAILS all 3 attempts, retry runs and COMPLETES', async () => {
-    // First job: fail all 3 attempts
-    slmMock.normalize.mockRejectedValue(new Error('circuit open'))
-    const originalId = await enqueue()
-    const originalFinal = await waitForTerminal(originalId, 60_000)
-    expect(originalFinal.status).toBe('FAILED')
-
-    // Reset the mock so the retry succeeds
-    slmMock.normalize.mockReset()
-    slmMock.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE)
-
-    // POST /retry on the failed source — JWT only
-    const retryRes = await request(httpApp.getHttpServer())
-      .post(`/api/normalize/jobs/${originalId}/retry`)
-      .set('Cookie', authCookie)
-      .expect(202)
-
-    const childId = retryRes.body.jobId
-    expect(childId).toMatch(/^[0-9a-f-]{36}$/)
-    expect(childId).not.toBe(originalId)
-    expect(retryRes.body.parentJobId).toBe(originalId)
-
-    // Wait for the retry to finish — should succeed
-    const childFinal = await waitForTerminal(childId, 60_000)
-    expect(childFinal.status).toBe('COMPLETED')
-    expect(childFinal.parentJobId).toBe(originalId)
-    expect(childFinal.result?.decision).toBe('accept')
-
-    // Both rows exist in the DB with correct statuses
-    const [originalRow, childRow] = await Promise.all([
-      prisma.normalizeJob.findUniqueOrThrow({ where: { id: originalId } }),
-      prisma.normalizeJob.findUniqueOrThrow({ where: { id: childId } }),
-    ])
-    expect(originalRow.status).toBe('FAILED')
-    expect(childRow.status).toBe('COMPLETED')
-    expect(childRow.parentJobId).toBe(originalId)
-  }, 120_000)
-
-  it('POST /retry on a non-FAILED job returns 409', async () => {
-    slmMock.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE)
-    const jobId = await enqueue()
-    await waitForTerminal(jobId, 60_000) // wait until COMPLETED
-
-    await request(httpApp.getHttpServer())
-      .post(`/api/normalize/jobs/${jobId}/retry`)
-      .set('Cookie', authCookie)
-      .expect(409)
-  }, 90_000)
-
-  it('POST /retry on an unknown UUID returns 404', async () => {
-    await request(httpApp.getHttpServer())
-      .post('/api/normalize/jobs/00000000-0000-4000-8000-000000000000/retry')
-      .set('Cookie', authCookie)
-      .expect(404)
-  })
-
-  it('POST /retry without auth (no cookie, no api key) returns 401', async () => {
-    await request(httpApp.getHttpServer())
-      .post('/api/normalize/jobs/00000000-0000-4000-8000-000000000000/retry')
-      .expect(401)
-  })
-
-  it('POST /retry with API key only returns 401 (retry is human-only)', async () => {
-    await request(httpApp.getHttpServer())
-      .post('/api/normalize/jobs/00000000-0000-4000-8000-000000000000/retry')
-      .set('x-api-key', process.env.API_KEY!)
-      .expect(401)
-  })
-
-  it('GET /api/normalize/jobs/:id with unknown UUID returns 404', async () => {
-    await request(httpApp.getHttpServer())
-      .get('/api/normalize/jobs/00000000-0000-4000-8000-000000000000')
-      .set('x-api-key', process.env.API_KEY!)
-      .expect(404)
-  })
-
-  it('GET /api/normalize/jobs/:id with malformed id returns 400', async () => {
-    await request(httpApp.getHttpServer())
-      .get('/api/normalize/jobs/not-a-uuid')
-      .set('x-api-key', process.env.API_KEY!)
-      .expect(400)
-  })
 })
