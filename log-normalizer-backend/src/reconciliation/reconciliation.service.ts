@@ -6,35 +6,7 @@ import { Queue } from 'bullmq';
 import { PrismaService } from 'src/database/prisma.service';
 import { NORMALIZE_QUEUE } from 'src/queue/queue-names';
 
-/**
- * Reconciliation sweep — converges orphaned NormalizeJob rows to FAILED.
- *
- * Two orphan categories Week 1 leaves behind:
- *
- *   A) Stuck ACTIVE — worker crashed mid-processing. The row was claimed
- *      via markActive but markCompleted/markFailed never ran. Detected by
- *      `startedAt` older than RECONCILE_STUCK_ACTIVE_MINUTES.
- *
- *   B) Stuck QUEUED — extreme edge case from IngestionService.create where
- *      enqueue() threw AND the cleanup deleteQuietly() also threw. The DB
- *      row exists but no BullMQ job was ever created. Detected by
- *      `createdAt` older than RECONCILE_STUCK_QUEUED_MINUTES AND no
- *      matching BullMQ job in Redis.
- *
- * Race safety
- * ───────────
- * Both sweeps use the same atomic updateMany + WHERE-status guard pattern
- * as JobsService.markActive/markCompleted/markFailed. If the worker
- * completes a job between our SELECT and our UPDATE, the WHERE clause
- * filters it out, the updateMany affects 0 rows, and we move on. There is
- * no read-then-write window where we can clobber a worker's transition.
- *
- * Concurrency
- * ───────────
- * `running` flag prevents two cron ticks from overlapping. If a sweep
- * takes longer than the cron interval (shouldn't happen — sweep A is one
- * UPDATE, sweep B is bounded), the next tick is a no-op.
- */
+
 @Injectable()
 export class ReconciliationService {
   private readonly logger = new Logger(ReconciliationService.name);
@@ -96,10 +68,7 @@ export class ReconciliationService {
     }
   }
 
-  /**
-   * Sweep A — stuck ACTIVE rows. Single atomic UPDATE; the WHERE clause
-   * IS the race guard. Returns the number of rows actually transitioned.
-   */
+
   async sweepActive(): Promise<number> {
     const cutoff = new Date(Date.now() - this.stuckActiveMs);
 
@@ -125,11 +94,7 @@ export class ReconciliationService {
     return count;
   }
 
-  /**
-   * Sweep B — stuck QUEUED rows that have no matching BullMQ job. Bounded
-   * by RECONCILE_BATCH_SIZE per run; the next tick picks up the next batch
-   * if there's a backlog.
-   */
+
   async sweepQueued(): Promise<number> {
     const cutoff = new Date(Date.now() - this.stuckQueuedMs);
 
@@ -145,7 +110,7 @@ export class ReconciliationService {
     for (const row of candidates) {
       const bullJob = await this.queue.getJob(row.id);
       if (bullJob) {
-        // BullMQ has it — it will eventually run or fail naturally.
+        // BullMQ has it - it will eventually run or fail naturally.
         continue;
       }
 
@@ -176,17 +141,7 @@ export class ReconciliationService {
     return fixed;
   }
 
-  /**
-   * Sweep C — TTL cleanup for idempotency keys.
-   *
-   * After IDEMPOTENCY_KEY_RETENTION_HOURS, NULL out the idempotencyKey
-   * column on rows older than the cutoff. The row stays for audit/history
-   * — only the unique key is released so it can be reused by a future
-   * client retry that wants the same logical operation ID.
-   *
-   * Single atomic UPDATE; no race concerns (worker doesn't touch this
-   * column).
-   */
+
   async sweepIdempotencyKeys(): Promise<number> {
     const cutoff = new Date(Date.now() - this.idempotencyKeyTtlMs);
 

@@ -6,12 +6,6 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthService } from '../auth.service';
 import { AuthenticatedPrincipal, JwtPayload } from '../auth.types';
 
-/**
- * Reads the JWT from an httpOnly `auth_token` cookie set by the login
- * endpoint. Falls back to the `Authorization: Bearer <token>` header
- * for machine clients or curl during dev — the cookie path is the
- * primary one for the React UI.
- */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
@@ -19,6 +13,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private readonly authService: AuthService,
   ) {
     super({
+      // Cookie first for the React UI; Bearer header for curl and machine clients.
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req: Request) => req?.cookies?.['auth_token'] ?? null,
         ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -28,13 +23,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  /**
-   * Passport calls this after verifying the signature/expiry. We re-read
-   * the user from the DB so deleted accounts and role changes take effect
-   * within one request, not at token expiry.
-   *
-   * Whatever this returns becomes `request.user`.
-   */
   async validate(payload: JwtPayload): Promise<AuthenticatedPrincipal> {
     const user = await this.authService.resolvePrincipalFromJwt(payload);
     if (!user) {

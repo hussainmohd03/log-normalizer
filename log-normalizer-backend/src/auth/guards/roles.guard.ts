@@ -9,18 +9,6 @@ import { UserRole } from 'generated/prisma/client';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { AuthenticatedPrincipal } from '../auth.types';
 
-/**
- * Reads the @Roles(...) metadata off the route handler and rejects any
- * request whose principal does not match. Must run AFTER an auth guard
- * (JwtAuthGuard or JwtOrApiKeyAuthGuard) — it assumes `request.user`
- * already exists.
- *
- * If the route has no @Roles decorator, the guard is a no-op (any
- * authenticated principal passes).
- *
- * API key principals (kind: 'apiKey') are rejected for any role-gated
- * route — machine identities have no role.
- */
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}

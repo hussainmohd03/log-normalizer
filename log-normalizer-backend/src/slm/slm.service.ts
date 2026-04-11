@@ -25,10 +25,10 @@ export class SLMService implements OnModuleInit{
     this.breaker = new CircuitBreaker(
       (payload: SLMRequest) => this.callSLM(payload),
       {
-        timeout: this.config.get('TIMEOUT'),                  // 15s request timeout
-        errorThresholdPercentage: this.config.get('ERROR_THRESHOLD_PERCENTAGE'),    // open after 50% failures
-        resetTimeout: this.config.get('RESET_TIMEOUT'),             // try again after 60s
-        volumeThreshold: this.config.get('VOLUME_THRESHOLD'),              // need 5 requests before opening
+        timeout: this.config.get('TIMEOUT'),                  
+        errorThresholdPercentage: this.config.get('ERROR_THRESHOLD_PERCENTAGE'),    
+        resetTimeout: this.config.get('RESET_TIMEOUT'),             
+        volumeThreshold: this.config.get('VOLUME_THRESHOLD'),              
       },
     );
 

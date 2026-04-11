@@ -18,17 +18,6 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 const COOKIE_NAME = 'auth_token';
 
-/**
- * Auth-facing endpoints:
- *  - POST /auth/login   (open)        — sets the auth_token cookie
- *  - POST /auth/logout  (JWT)         — clears the cookie
- *  - GET  /auth/me      (JWT)         — returns the current user
- *
- * The cookie is set with HttpOnly + Secure + SameSite=Strict so:
- *  - JS cannot read it (immune to XSS exfiltration)
- *  - Browsers will not send it on cross-site requests (immune to CSRF)
- *  - It will only ride HTTPS in production
- */
 @Controller('auth')
 export class AuthController {
   private readonly cookieOptions: {
@@ -79,9 +68,7 @@ export class AuthController {
     email: string;
     role: string;
   } {
-    // JwtAuthGuard guarantees kind === 'user'
     if (user.kind !== 'user') {
-      // Defensive — should be unreachable.
       throw new Error('JwtAuthGuard yielded a non-user principal');
     }
     return { email: user.email, role: user.role };

@@ -12,28 +12,6 @@ interface IngestResult {
   deduped: boolean;
 }
 
-/**
- * Sole submit path for the normalize pipeline.
- *
- *   POST /api/logs/ingest          → receiveAlert  → 1 NormalizeJob, 1 enqueue
- *   POST /api/logs/ingest/batch    → receiveBatch  → N NormalizeJobs, N enqueues
- *
- * Idempotency
- * ───────────
- * Clients may pass an idempotency key:
- *  - For single ingest, via the `Idempotency-Key` HTTP header.
- *  - For batch items, via a per-item `idempotencyKey` field.
- *
- * If a row with the same key already exists, this service returns the
- * existing row's envelope WITHOUT enqueueing a second BullMQ job. The
- * dedup is enforced by a UNIQUE constraint on NormalizeJob.idempotencyKey,
- * so two concurrent requests with the same key resolve deterministically:
- * one INSERT wins, the other gets P2002 and falls through to the lookup.
- *
- * If no key is supplied, the server generates a UUID internally — this
- * makes idempotency strictly opt-in. The internal UUID will never collide,
- * so the P2002 path is never taken in that case.
- */
 @Injectable()
 export class IngestionService {
   private readonly logger = new Logger(IngestionService.name);
@@ -62,7 +40,7 @@ export class IngestionService {
   ): Promise<{ results: IngestResult[]; count: number }> {
     const results: IngestResult[] = [];
 
-    // Sequential — keeps the cleanup-on-failure semantics simple and the
+    // Sequential - keeps the cleanup-on-failure semantics simple and the
     // queue absorbs the bursts. The bottleneck is the worker anyway.
     for (const item of dto.items) {
       const result = await this.createAndEnqueue({
@@ -131,7 +109,7 @@ export class IngestionService {
       try {
         await this.jobsService.deleteQuietly(row.id);
       } catch {
-        // swallow — cleanup failure must not mask the real error
+        // swallow - cleanup failure must not mask the real error
       }
       throw err;
     }

@@ -8,8 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableShutdownHooks();
-  // cookie-parser must run BEFORE any guard reads req.cookies
-  // (the JwtStrategy cookie extractor needs this populated).
+
   app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({
@@ -21,7 +20,7 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.setGlobalPrefix('api');
   // credentials: true is required for httpOnly auth cookies to ride
-  // cross-origin during dev. In prod (same-origin) it's a no-op.
+  // cross-origin during dev. In prod (same-origin)
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? true,
     credentials: true,

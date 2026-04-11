@@ -8,24 +8,10 @@ import { RoutingModule } from 'src/routing/routing.module';
 import { SLMModule } from 'src/slm/slm.module';
 import { NormalizeProcessor } from './normalize.processor';
 
-/**
- * Slim module booted by the worker entry process. Pulls in only what
- * the processor needs:
- *  - DatabaseModule for PrismaService (transitively)
- *  - SLMModule for the HTTP client + circuit breaker
- *  - RoutingModule for the OCSFEvent / ManualReview / SQS chain
- *  - BullModule for the queue connection
- *  - JobsService for the row CRUD
- *
- * Intentionally does NOT import JobsModule — that would drag in the
- * legacy ReprocessJob/SQSRetryJob cron providers and the SSE
- * controller, none of which the worker process needs.
- */
+
 @Module({
   imports: [
-    // forRoot is required — without it, ConfigService is not registered
-    // and PrismaService (which depends on it) fails to resolve.
-    // isGlobal so SLMModule, BullModule, etc. can inject it transitively.
+
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     SLMModule,
