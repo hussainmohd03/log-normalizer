@@ -30,7 +30,7 @@ def validate_ocsf(data: dict, source: str = "unknown") -> ValidationResult:
 
     try:
         model = DetectionFinding(**data)
-        cleaned = model.model_dump(exclude_none=True)
+        cleaned = model.model_dump(by_alias=True, exclude_none=True)
 
         # Detect what Pydantic stripped
         warnings = _find_stripped_fields(data, cleaned)

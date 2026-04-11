@@ -7,10 +7,7 @@ interface UseApiResult<T> {
   refetch: () => void
 }
 
-/**
- * Fetches data on mount and exposes loading/error/refetch.
- * Pass a stable deps array to re-fetch when inputs change.
- */
+
 export const useApi = <T>(
   fetcher: () => Promise<T>,
   deps: unknown[] = [],

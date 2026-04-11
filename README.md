@@ -263,7 +263,7 @@ Each export is recorded as a `TrainingExport` row with the admin who triggered i
 Two authentication shapes coexist:
 
 - **JWT cookie sessions** for humans (UI users). Login at `POST /api/auth/login`, credentials hashed with argon2id, token stored in an `httpOnly; SameSite=Strict` cookie, 24-hour expiry, no refresh tokens.
-- **API keys** for machines (SIEM ingestion). A single shared API key from env, sent via `Authorization: Bearer <key>` [VERIFY: exact header name].
+- **API keys** for machines (SIEM ingestion). A single shared API key from env.
 
 Routes are gated by one of three guards:
 
@@ -285,7 +285,7 @@ Environment is loaded per service via Docker Compose `env_file:` directives. Eac
 
 - `log-normalizer-backend/.env` — Postgres, Redis, auth, SQS, circuit breaker, reconciliation. Also consumed by the `postgres` and `migrate` services.
 - `log-normalizer-slm/.env` — Model paths, device, confidence thresholds.
-- `log-normalizer-ui/.env` — `VITE_API_URL` only (baked into the bundle at build time). Never put secrets here — `VITE_*` variables are visible in the browser.
+- `log-normalizer-ui/.env` — `VITE_API_URL` only
 
 The critical variables:
 
@@ -379,7 +379,6 @@ Things to be aware of when extending the project:
 - **Multi-instance backend is untested.** The SSE implementation uses Redis pub/sub via BullMQ QueueEvents, which should work across multiple HTTP instances in theory. If you scale horizontally, test SSE specifically.
 - **Model hallucinations remain.** The post-processor catches the _known_ failure modes (hallucinated MITRE, hostname-is-email, fabricated OS strings, wrong observable type IDs). Novel hallucinations on alert shapes the model hasn't seen before will still get through. The confidence-based routing and the human-initiated flag-for-review path are the second and third lines of defense.
 - **No diff view between original and corrected OCSF** on the review detail page. The full original is still visible because the supersedes chain preserves it in the database, but rendering a side-by-side diff is a UI improvement that hasn't been built.
-- **System metrics** are surfaced from the SLM's `/health` endpoint (CPU, memory, GPU utilization) but not from the backend. The Health page in the UI shows SLM metrics only.
 - **Reconciliation sweep is the safety net** for jobs stuck in `ACTIVE` (worker crashed mid-inference) or stuck in `QUEUED` with no matching BullMQ entry. It runs every 5 minutes. See the backend `README.md` for details.
 
 ---

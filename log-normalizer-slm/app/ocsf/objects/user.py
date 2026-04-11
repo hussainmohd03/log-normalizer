@@ -12,5 +12,7 @@ class User(BaseModel):
     type_id: Optional[UserTypeId] = None
     account: Optional[Account] = None
     org: Optional[Organization] = None
+    domain: Optional[str] = None
+    full_name: Optional[str] = None
 
     model_config = ConfigDict(extra="ignore")

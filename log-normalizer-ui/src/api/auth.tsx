@@ -13,14 +13,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-/**
- * Owns the React-side auth state. On mount it probes /auth/me to see
- * if the cookie is still valid (e.g. after a page reload), then either
- * sets `user` or leaves it null. Login/logout call the API and update
- * state.
- *
- * Any component anywhere can call useAuth() to read the user.
- */
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)

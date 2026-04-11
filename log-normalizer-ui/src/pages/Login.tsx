@@ -2,11 +2,6 @@ import { useState } from 'react'
 import { useAuth } from '../api/auth'
 import { ApiError } from '../api/client'
 
-/* ── Inline SVG icons ────────────────────────────────────────────────────
-   Avoid pulling in lucide-react for four icons used on a single page.
-   Each icon mirrors lucide's stroke geometry so the visual matches the
-   spec without the dependency. */
-
 const IconCheck = ({ className }: { className?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -130,7 +125,7 @@ const Login = () => {
 
   return (
     <div className="login-page">
-      {/* ── Brand panel (left, hidden on mobile) ─────────────────────── */}
+      {/* --- Brand panel (left, hidden on mobile) --------------------------------- */}
       <aside className="login-brand-panel">
         <div className="login-brand-grid" aria-hidden />
 
@@ -175,7 +170,7 @@ const Login = () => {
         <footer className="login-brand-footer">© 2025 Beyon Cyber — Bahrain</footer>
       </aside>
 
-      {/* ── Form panel (right, full-width on mobile) ─────────────────── */}
+      {/* --- Form panel (right, full-width on mobile) --------------------------- */}
       <main className="login-form-panel">
         <form className="login-form" onSubmit={onSubmit} noValidate>
           <div className="login-form-header">
