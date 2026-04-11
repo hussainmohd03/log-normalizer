@@ -1,31 +1,19 @@
-# Production-shaped stack. Bring up with:
-#   docker compose -f docker-compose.yml up -d
-#
-# For dev with hot reload, just run `docker compose up` — the
-# docker-compose.override.yml is auto-loaded and layers on bind mounts
-# and watch commands.
-#
-# Layout:
-#   postgres ── data store
-#   redis ───── BullMQ broker
-#   migrate ── one-shot prisma migrate deploy (depends on postgres)
-#   slm ─────── FastAPI inference server (NEEDS NVIDIA GPU)
-#   backend-http ── NestJS HTTP (depends on migrate + redis)
-#   backend-worker ── NestJS BullMQ consumer (depends on migrate + redis + slm)
-#   frontend ── nginx serving the built React app
-
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-lognorm}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lognorm}
-      POSTGRES_DB: ${POSTGRES_DB:-lognormalizer}
+    env_file:
+      - ./log-normalizer-backend/.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lognorm} -d ${POSTGRES_DB:-lognormalizer}"]
+      # $$VAR (escaped $) is expanded by the container shell at
+      # runtime from env_file values — NOT by Compose at parse time.
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -34,17 +22,17 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ['redis-server', '--appendonly', 'yes']
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 10
     networks: [internal]
 
-  # ── One-shot migration runner ──────────────────────────────────────
+  # -- One-shot migration runner --------------------------------------
   # Runs `prisma migrate deploy` and exits. Backend services
   # `depends_on: migrate: condition: service_completed_successfully` so
   # they will not start until the schema is up to date.
@@ -56,16 +44,16 @@ services:
       context: ./log-normalizer-backend
       dockerfile: Dockerfile
     image: log-normalizer-backend:${IMAGE_TAG:-latest}
-    command: ["npx", "prisma", "migrate", "deploy"]
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-lognorm}:${POSTGRES_PASSWORD:-lognorm}@postgres:5432/${POSTGRES_DB:-lognormalizer}
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    env_file:
+      - ./log-normalizer-backend/.env
     depends_on:
       postgres:
         condition: service_healthy
     networks: [internal]
-    restart: "no"
+    restart: 'no'
 
-  # ── SLM inference service (GPU required) ───────────────────────────
+  # -- SLM inference service (GPU required) --------------------------─
   # If your host has no NVIDIA GPU, comment out this service AND
   # `backend-worker.depends_on.slm` below, then run the SLM natively
   # against a remote GPU and point SLM_API at it. The rest of the
@@ -76,13 +64,13 @@ services:
       dockerfile: Dockerfile
     image: log-normalizer-slm:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    env_file:
+      - ./log-normalizer-slm/.env
     environment:
+      # Container path override — non-secret, matches the volume mount.
       MODEL_PATH: ${MODEL_PATH:-/app/models}
     volumes:
-      # Model weights live on the host — never baked into the image.
       - ./log-normalizer-slm/models:/app/models:ro
-      # Persistent HuggingFace / transformers cache so re-downloads
-      # do not happen on every container restart.
       - slm_cache:/cache
     deploy:
       resources:
@@ -92,38 +80,22 @@ services:
               count: 1
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:8000/health']
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 120s  # model load takes ~60–120s on cold start
+      start_period: 120s
     networks: [internal]
 
-  # ── NestJS HTTP process ────────────────────────────────────────────
+  # -- NestJS HTTP process --------------------------------------------
   backend-http:
     build:
       context: ./log-normalizer-backend
       dockerfile: Dockerfile
     image: log-normalizer-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-lognorm}:${POSTGRES_PASSWORD:-lognorm}@postgres:5432/${POSTGRES_DB:-lognormalizer}
-      REDIS_URL: redis://redis:6379
-      SLM_API: http://slm:8000
-      API_KEY: ${API_KEY:?API_KEY is required}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
-      JWT_TTL_HOURS: ${JWT_TTL_HOURS:-24}
-      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
-      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
-      AWS_REGION: ${AWS_REGION:-}
-      SQS_QUEUE_URL: ${SQS_QUEUE_URL:-}
-      TIMEOUT: ${TIMEOUT:-860000}
-      ERROR_THRESHOLD_PERCENTAGE: ${ERROR_THRESHOLD_PERCENTAGE:-50}
-      RESET_TIMEOUT: ${RESET_TIMEOUT:-60000}
-      VOLUME_THRESHOLD: ${VOLUME_THRESHOLD:-5}
+    env_file:
+      - ./log-normalizer-backend/.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,16 +104,22 @@ services:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
       interval: 10s
       timeout: 5s
       retries: 6
       start_period: 20s
     ports:
-      - "${BACKEND_PORT:-3000}:3000"
+      - '${BACKEND_PORT:-3000}:3000'
     networks: [internal]
 
-  # ── NestJS BullMQ worker ───────────────────────────────────────────
+  # -- NestJS BullMQ worker ------------------------------------------─
   # Same image as backend-http, different CMD. Concurrency is pinned
   # to 1 inside the worker code (single GPU, single inference at a
   # time) — do NOT scale this service horizontally.
@@ -151,20 +129,14 @@ services:
       context: ./log-normalizer-backend
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: ["node", "dist/src/worker"]
+    command: ['node', 'dist/src/worker']
+    env_file:
+      - ./log-normalizer-backend/.env
     environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER:-lognorm}:${POSTGRES_PASSWORD:-lognorm}@postgres:5432/${POSTGRES_DB:-lognormalizer}
-      REDIS_URL: redis://redis:6379
-      SLM_API: http://slm:8000
-      API_KEY: ${API_KEY:?API_KEY is required}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
-      AWS_REGION: ${AWS_REGION:-}
-      SQS_QUEUE_URL: ${SQS_QUEUE_URL:-}
-      TIMEOUT: ${TIMEOUT:-860000}
-      ERROR_THRESHOLD_PERCENTAGE: ${ERROR_THRESHOLD_PERCENTAGE:-50}
-      RESET_TIMEOUT: ${RESET_TIMEOUT:-60000}
-      VOLUME_THRESHOLD: ${VOLUME_THRESHOLD:-5}
+      # Prevent the worker from racing the http process to create
+      # the bootstrap admin on first start.
+      BOOTSTRAP_ADMIN_EMAIL: ''
+      BOOTSTRAP_ADMIN_PASSWORD: ''
     depends_on:
       redis:
         condition: service_healthy
@@ -174,26 +146,27 @@ services:
         condition: service_healthy
     healthcheck:
       # Worker has no HTTP port — check the node process is running.
-      test: ["CMD-SHELL", "pgrep -f 'dist/src/worker' > /dev/null"]
+      test: ['CMD-SHELL', "pgrep -f 'dist/src/worker' > /dev/null"]
       interval: 15s
       timeout: 3s
       retries: 4
     networks: [internal]
 
-  # ── React UI served by nginx ───────────────────────────────────────
+  # -- React UI served by nginx --------------------------------------─
+  # VITE_API_URL is a build-time arg baked into the bundle; nginx
+  # does not read an env file at runtime, so no env_file: here.
   frontend:
     build:
       context: ./log-normalizer-ui
       dockerfile: Dockerfile
       args:
-        # Inlined into the bundle at build time — change requires rebuild.
         VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
     image: log-normalizer-ui:${IMAGE_TAG:-latest}
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      - '${FRONTEND_PORT:-8080}:80'
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/healthz"]
+      test: ['CMD', 'wget', '-q', '-O', '-', 'http://localhost/healthz']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -201,7 +174,6 @@ services:
       backend-http:
         condition: service_healthy
     networks: [internal]
-
 
 volumes:
   postgres_data:

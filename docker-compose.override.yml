@@ -1,44 +1,24 @@
-# Dev overrides — auto-loaded by `docker compose up`.
-#
-# To run the prod stack instead, use the explicit -f flag and skip
-# this file:
-#   docker compose -f docker-compose.yml up -d
-#
-# What this layer does:
-#  - Bind-mounts source so edits are picked up by hot reload
-#  - Runs nest in --watch mode for both http and worker
-#  - Replaces the nginx-built frontend with vite dev server
-#  - Disables CORS strictness for the local dev origin
-#  - Provides safe defaults for BOOTSTRAP_ADMIN_* so first boot has
-#    a usable admin without manual setup
-
 services:
   backend-http:
-    # Override the runtime command to run from source with hot reload.
-    command: ["npm", "run", "start:dev"]
+    command: ['npm', 'run', 'start:dev']
     environment:
       NODE_ENV: development
+      # Vite dev server origin (differs from prod nginx).
       CORS_ORIGIN: http://localhost:5173
-      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@local.dev}
-      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-changemechangemechangeme}
     volumes:
-      # Bind-mount source so nest --watch picks up edits live.
       - ./log-normalizer-backend/src:/app/src
       - ./log-normalizer-backend/prisma:/app/prisma
       - ./log-normalizer-backend/test:/app/test
       - ./log-normalizer-backend/nest-cli.json:/app/nest-cli.json
       - ./log-normalizer-backend/tsconfig.json:/app/tsconfig.json
       - ./log-normalizer-backend/tsconfig.build.json:/app/tsconfig.build.json
-    # Dev mode talks directly to the host browser, so map vite's
-    # default port for CORS to work without changes.
     ports:
-      - "${BACKEND_PORT:-3000}:3000"
+      - '${BACKEND_PORT:-3000}:3000'
 
   backend-worker:
-    command: ["npm", "run", "start:worker:dev"]
+    command: ['npm', 'run', 'start:worker:dev']
     environment:
       NODE_ENV: development
-      BOOTSTRAP_ADMIN_EMAIL: ""  # worker should NOT seed admin — only http does
     volumes:
       - ./log-normalizer-backend/src:/app/src
       - ./log-normalizer-backend/prisma:/app/prisma
@@ -46,19 +26,16 @@ services:
       - ./log-normalizer-backend/tsconfig.json:/app/tsconfig.json
       - ./log-normalizer-backend/tsconfig.build.json:/app/tsconfig.build.json
 
-  # ── Frontend: vite dev server instead of nginx ────────────────────
-  # Override the entire image+command. Same source dir bind-mounted
-  # so HMR works.
   frontend:
     image: node:22-bookworm-slim
-    build: !reset null  # disable the prod nginx build for dev
+    build: !reset null
     working_dir: /app
-    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
+    command: ['sh', '-c', 'npm install && npm run dev -- --host 0.0.0.0']
     environment:
       VITE_API_URL: http://localhost:3000/api
     volumes:
       - ./log-normalizer-ui:/app
-      - /app/node_modules  # anonymous volume keeps host node_modules out of the way
+      - /app/node_modules
     ports:
-      - "5173:5173"
+      - '5173:5173'
     healthcheck: !reset null
