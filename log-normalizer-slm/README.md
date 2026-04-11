@@ -1,6 +1,6 @@
 # log-normalizer-slm
 
-Python FastAPI service hosting a fine-tuned small language model that converts raw vendor security alerts into validated OCSF v1.7.0 Detection Finding JSON. The interesting parts of this service are not the model — they're the **post-processor**, the **OCSF Pydantic validation**, and the **confidence scoring** that sit around the model to make its output production-safe.
+Python FastAPI service hosting a fine-tuned small language model that converts raw vendor security alerts into validated OCSF v1.7.0 Detection Finding JSON. The interesting parts of this service are not the model  they're the **post-processor**, the **OCSF Pydantic validation**, and the **confidence scoring** that sit around the model to make its output production-safe.
 
 This README assumes you've read the [root README](../README.md) for context. Here we go deep on the SLM service specifically.
 
@@ -14,22 +14,22 @@ One endpoint handles the full pipeline:
 POST /api/normalize
   ↓
 1. prompt_builder.build_prompt(raw_log, source, format)
-2. model_manager.generate(prompt) ── slow (150-300s on GPU)
+2. model_manager.generate(prompt) - slow (150-300s on GPU)
 3. extract_json(raw_output)
-4. PostProcessor.process(ocsf, raw_alert, source) ── fixes + hallucination guards
-5. validate_ocsf(cleaned_ocsf, source) ── Pydantic v1.7.0 models
+4. PostProcessor.process(ocsf, raw_alert, source) - fixes + hallucination guards
+5. validate_ocsf(cleaned_ocsf, source) - Pydantic v1.7.0 models
 6. compute_confidence(raw_alert, cleaned_ocsf, source, validation, post_process)
   ↓
 return { ocsf, decision, confidence, breakdown, fixes_applied, hallucinations_stripped, ... }
 ```
 
-Every stage has its own directory under `app/` and its own tests. The pipeline is linear — no branching, no caching, no queues. Concurrency is handled upstream (the NestJS worker runs at `concurrency: 1`), so this service does not need its own queue. The only concurrency primitive is a 600-second `asyncio.wait_for` wrapper around inference as a final safety net — if the model hangs, the request fails with 504 rather than hanging forever.
+Every stage has its own directory under `app/` and its own tests. The pipeline is linear no branching, no caching, no queues. Concurrency is handled upstream (the NestJS worker runs at `concurrency: 1`), so this service does not need its own queue. The only concurrency primitive is a 600-second `asyncio.wait_for` wrapper around inference as a final safety net  if the model hangs, the request fails with 504 rather than hanging forever.
 
 ---
 
 ## The model
 
-**Base:** `foundation-sec-1.1-8b-instruct` — a security-domain-adapted 8B parameter instruct model from Foundation AI Research. [VERIFY: exact HuggingFace ID]
+**Base:** `foundation-sec-1.1-8b-instruct`  a security-domain-adapted 8B parameter instruct model from Foundation AI Research.
 
 **Fine-tuning:** LoRA adapter trained on a hand-labeled dataset of raw-alert → OCSF pairs covering 8 vendors (Splunk, CrowdStrike, Microsoft Defender, Microsoft Sentinel, Palo Alto Networks, Trend Micro, LogRhythm, Expel).
 
@@ -67,8 +67,9 @@ app/
 │   ├── __init__.py                 # OCSF_VERSION constant
 │   ├── enums.py                    # SeverityId, StatusId, ObservableTypeId, ...
 │   ├── validator.py                # two-tier validation (hard errors + warnings)
+│   ├── events/                
+│       ├── detection_finding.py             
 │   └── objects/
-│       ├── detection_finding.py    # The root event class (class_uid: 2004)
 │       ├── finding_info.py
 │       ├── metadata.py
 │       ├── device.py
@@ -125,7 +126,7 @@ app/
 │
 └── utils/
     ├── prompt_builder.py           # Builds the chat messages for the model
-    └── ocsf_parser.py              # extract_json() — pulls the first valid JSON object from the model output
+    └── ocsf_parser.py              # extract_json()  pulls the first valid JSON object from the model output
 ```
 
 Tests mirror the source tree under `tests/unit/`.
@@ -201,7 +202,7 @@ The system prompt is built in `app/utils/prompt_builder.py`. It instructs the mo
 - Place MITRE ATT&CK information inside `finding_info.attacks[]`
 - Place user information in `device.owner` or `evidences[].actor.user`
 - Never put process, src_endpoint, dst_endpoint, attacks, or user at the top level
-- Place vendor-specific fields with no OCSF equivalent in an `unmapped` object — never invent OCSF field names
+- Place vendor-specific fields with no OCSF equivalent in an `unmapped` object  never invent OCSF field names
 - Include `observables[]` with key IOCs (IPs, hashes, domains, emails, usernames)
 - Use the correct severity_id enum values (0=Unknown through 6=Fatal, and 99=Other)
 - Compute `type_uid = class_uid * 100 + activity_id`
@@ -259,7 +260,7 @@ Rules that correct MITRE ATT&CK naming without stripping valid mappings.
 | `fix_mitre_technique_names` | Overwrites `technique.name` with the canonical name from the minimal MITRE table when the UID is present. Leaves unknown UIDs alone with a warning. |
 | `fix_mitre_tactic_names` | Same for tactics. Also normalizes the deprecated `TA0043 PreAttack` to `TA0043 Reconnaissance`. |
 
-The MITRE table is minimal — only the techniques and tactics the model has actually produced in training output. See `app/postprocess/lookups/mitre.py` for the full list. An out-of-date full MITRE table would cause more problems than a minimal table of known values.
+The MITRE table is minimal  only the techniques and tactics the model has actually produced in training output. See `app/postprocess/lookups/mitre.py` for the full list. An out-of-date full MITRE table would cause more problems than a minimal table of known values.
 
 ### Stage 5: Hallucination guards (3 rules)
 
@@ -281,7 +282,7 @@ The combination of "strip + log + dock" is deliberate. When the post-processor c
 2. A message is appended to `hallucinations_stripped` so a human reviewing the job can see what was removed.
 3. The confidence score is docked by 0.10, which often pushes the job below the `accept` threshold and into the `review` queue.
 
-A hallucinating output naturally routes toward human review without any new code paths — it uses the existing confidence-based routing. The post-processor and the routing system work together via the confidence score.
+A hallucinating output naturally routes toward human review without any new code paths  it uses the existing confidence-based routing. The post-processor and the routing system work together via the confidence score.
 
 ---
 
@@ -330,7 +331,7 @@ The breakdown is returned in the response as an object:
 }
 ```
 
-**The penalty is explicitly negative.** This is important — it means the composite math is just `sum of the values`, and UI rendering needs to handle the negative case. The backend `JobResponse` mapper preserves the negative value; the UI renders it in a visually distinct way (red / "deduction" label).
+**The penalty is explicitly negative.** This is important  it means the composite math is just `sum of the values`, and UI rendering needs to handle the negative case. The backend `JobResponse` mapper preserves the negative value; the UI renders it in a visually distinct way (red / "deduction" label).
 
 ---
 
@@ -353,7 +354,7 @@ pip install -r requirements.txt
 # With a GPU:
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload    # [VERIFY: exact command]
 
-# Without a GPU (CPU inference — slow):
+# Without a GPU (CPU inference  slow):
 # Make sure settings.device defaults to 'cpu' in your environment
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
@@ -416,50 +417,11 @@ source .venv/bin/activate
 pytest tests/unit
 ```
 
-Test layout:
-
-```
-tests/
-└── unit/
-    ├── ocsf/
-    │   ├── test_validator.py
-    │   ├── test_email.py                 # verifies Pydantic accepts new fields,
-    │   │                                 # ignores invented ones
-    │   └── ...
-    ├── postprocess/
-    │   ├── test_structural.py
-    │   ├── test_field_fixes.py
-    │   ├── test_enrichment.py
-    │   ├── test_mitre.py
-    │   ├── test_hallucinations.py
-    │   ├── test_pipeline.py               # runs the full pipeline on real bad outputs
-    │   └── fixtures/
-    │       ├── splunk_bad_output.json
-    │       ├── trendmicro_bad_output.json
-    │       └── sentinel_bad_output.json
-    ├── scoring/
-    │   └── test_confidence.py
-    └── utils/
-        └── test_ocsf_parser.py
-```
-
-### The fixture tests
-
-`tests/unit/postprocess/test_pipeline.py` runs the full `PostProcessor.process()` on three real model outputs that exhibit known failure modes. Each fixture test asserts:
-
-1. The full pipeline runs without exceptions.
-2. The expected fixes appear in `fixes_applied`.
-3. The expected hallucinations appear in `hallucinations_stripped`.
-4. The cleaned output parses through Pydantic validation without hard errors.
-
-Do not delete these fixtures. They are the regression suite for the most important behavior in the service.
-
----
 
 ## What the SLM service does not do
 
 - **No batching.** The model runs at batch 1. Concurrent requests would serialize anyway because of GPU memory constraints, and the NestJS worker upstream runs at `concurrency: 1` to enforce this.
-- **The post-processor is a deny-list of known bugs, not a validator.** If the model produces a novel hallucination that no rule catches, it will flow through. The confidence-based routing is the safety net — novel outputs tend to score low and route to review.
+- **The post-processor is a deny-list of known bugs, not a validator.** If the model produces a novel hallucination that no rule catches, it will flow through. The confidence-based routing is the safety net  novel outputs tend to score low and route to review.
 - **MITRE table is minimal.** Only techniques/tactics the model has actually produced in training or observation. If the model produces a valid technique that isn't in the table, the name is left unchanged rather than looked up. Expanding the table requires manual curation.
 - **The `enrich_email_from_raw_alert` rule is Sentinel-specific.** It knows the Sentinel MailMessage entity shape. Other vendors that produce email alerts would need their own enrichment logic.
 - **No request-level concurrency control inside the service.** The service trusts the caller to not hammer it. Concurrency is enforced by the NestJS worker. If you expose the SLM directly to another caller, add a GPU semaphore.

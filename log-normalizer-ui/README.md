@@ -10,7 +10,7 @@ This README assumes you've read the [root README](../README.md) for context. Her
 
 A single-page React app served by nginx in production and by Vite's dev server in development. It talks exclusively to the NestJS backend via cookies — there is no direct client-to-SLM communication. All API calls go through `/api/*` on the same origin in production (nginx reverse-proxies to the backend) or via `VITE_API_URL` in development.
 
-The UI is a functional dashboard for a SOC engineering audience: dark theme, dense information, no marketing gloss.
+The UI is a functional dashboard for a SOC engineering audience: dark theme, dense information.
 
 ---
 
@@ -190,7 +190,6 @@ Inline SVG, written as small React components. See `src/pages/Login.tsx` for the
 - Body: Inter or system sans-serif, regular
 - Code / JSON: monospace (ui-monospace, SF Mono, Menlo, ...)
 
-[VERIFY: actual font stack in index.css or similar]
 
 ### Input style (shared)
 
@@ -276,7 +275,7 @@ Vite proxies `/api/*` requests in development if configured. [VERIFY: vite.confi
 npm run build
 ```
 
-Outputs static files to `dist/`. The production Dockerfile uses a multi-stage build: node:22 for the build, then copies `dist/` into `nginx:1.27-alpine`. nginx config is at `[VERIFY: path]` and handles:
+Outputs static files to `dist/`. The production Dockerfile uses a multi-stage build: node:22 for the build, then copies `dist/` into `nginx:1.27-alpine`.
 
 - SPA fallback: unknown routes serve `index.html` (React Router handles the rest client-side)
 - `/api/*` reverse-proxies to the backend service
