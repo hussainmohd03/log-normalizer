@@ -43,7 +43,7 @@ describe('TrainingDataService', () => {
     await prisma.$disconnect();
   });
 
-  // ── helpers ───────────────────────────────────────────────────────────
+  // -- helpers -----------------------------------------------------------
 
   const seedReview = async (opts: {
     corrected: boolean;
@@ -72,7 +72,7 @@ describe('TrainingDataService', () => {
     });
   };
 
-  // ── getStats ──────────────────────────────────────────────────────────
+  // -- getStats ----------------------------------------------------------
 
   describe('getStats', () => {
     it('returns zeros and an empty history on a clean DB', async () => {
@@ -124,7 +124,7 @@ describe('TrainingDataService', () => {
     });
   });
 
-  // ── exportPending ─────────────────────────────────────────────────────
+  // -- exportPending -----------------------------------------------------
 
   describe('exportPending', () => {
     it('throws NoCorrectionsToExportError when nothing is pending', async () => {

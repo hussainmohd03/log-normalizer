@@ -62,7 +62,7 @@ describe('IngestionService', () => {
     service = module.get(IngestionService)
   })
 
-  // ── receiveAlert: basics ────────────────────────────────────────────────
+  // -- receiveAlert: basics ------------------------------------------------
 
   it('receiveAlert: creates a job, enqueues, returns { jobId, status, deduped: false }', async () => {
     const result = await service.receiveAlert({
@@ -104,7 +104,7 @@ describe('IngestionService', () => {
     )
   })
 
-  // ── receiveAlert: cleanup on enqueue failure ────────────────────────────
+  // -- receiveAlert: cleanup on enqueue failure ----------------------------
 
   it('receiveAlert: enqueue failure deletes the orphan row and propagates', async () => {
     mockProducer.enqueue.mockRejectedValueOnce(new Error('Redis down'))
@@ -125,7 +125,7 @@ describe('IngestionService', () => {
     ).rejects.toThrow('Redis down')
   })
 
-  // ── receiveAlert: idempotency ───────────────────────────────────────────
+  // -- receiveAlert: idempotency ------------------------------------------─
 
   it('idempotency: no key supplied → server generates one, no dedup possible', async () => {
     await service.receiveAlert({ source: 'crowdstrike', rawContent: { x: 1 } })
@@ -221,7 +221,7 @@ describe('IngestionService', () => {
     expect([a.deduped, b.deduped].sort()).toEqual([false, true])
   })
 
-  // ── receiveBatch ────────────────────────────────────────────────────────
+  // -- receiveBatch --------------------------------------------------------
 
   it('receiveBatch: creates one job per item, enqueues each, returns results', async () => {
     const rowA = { ...STUB_ROW, id: 'uuid-a' }

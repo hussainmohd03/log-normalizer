@@ -48,7 +48,7 @@ describe('SQSClientService', () => {
     ).rejects.toThrow(/SQS_QUEUE_URL/)
   })
 
-  // ── Standard queue: dedup id is silently ignored ───────────────────────
+  // -- Standard queue: dedup id is silently ignored -----------------------
 
   it('standard queue: publish does NOT attach MessageDeduplicationId or MessageGroupId', async () => {
     const service = await buildService({
@@ -65,7 +65,7 @@ describe('SQSClientService', () => {
     expect(input.MessageBody).toBe(JSON.stringify({ class_uid: 2004 }))
   })
 
-  // ── FIFO queue: dedup id is forwarded ──────────────────────────────────
+  // -- FIFO queue: dedup id is forwarded ----------------------------------
 
   it('FIFO queue: publish attaches MessageDeduplicationId from the dedupId arg', async () => {
     const service = await buildService({
@@ -92,7 +92,7 @@ describe('SQSClientService', () => {
     expect(input.MessageDeduplicationId).toBeUndefined()
   })
 
-  // ── Return value ───────────────────────────────────────────────────────
+  // -- Return value -------------------------------------------------------
 
   it('returns the SQS MessageId on successful send', async () => {
     const service = await buildService({

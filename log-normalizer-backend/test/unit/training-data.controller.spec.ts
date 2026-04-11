@@ -36,7 +36,7 @@ describe('TrainingDataController', () => {
     controller = module.get(TrainingDataController);
   });
 
-  // ── stats ──────────────────────────────────────────────────────────────
+  // -- stats --------------------------------------------------------------
 
   describe('GET stats', () => {
     it('returns the service stats verbatim', async () => {
@@ -67,7 +67,7 @@ describe('TrainingDataController', () => {
     });
   });
 
-  // ── export ─────────────────────────────────────────────────────────────
+  // -- export -------------------------------------------------------------
 
   describe('POST export', () => {
     const buildRes = () => {

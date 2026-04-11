@@ -95,7 +95,7 @@ describe('NormalizeProcessor', () => {
     processor = module.get(NormalizeProcessor);
   });
 
-  // ── claim path ──────────────────────────────────────────────────────────
+  // ---- claim path --------------------------------------------------------------------------------------------------------------------
 
   it('loads the row using bullJob.data.jobId, not bullJob.id', async () => {
     mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
@@ -128,7 +128,7 @@ describe('NormalizeProcessor', () => {
     expect(order).toEqual(['markActive', 'slm']);
   });
 
-  // ── happy path ──────────────────────────────────────────────────────────
+  // ---- happy path --------------------------------------------------------------------------------------------------------------------
 
   it('on SLM success calls routing.route then markCompleted with the mapped result', async () => {
     mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);
@@ -180,7 +180,7 @@ describe('NormalizeProcessor', () => {
     });
   });
 
-  // ── retry semantics: transient failure (not the last attempt) ───────────
+  // ---- retry semantics: transient failure (not the last attempt) ----------------------
 
   it('on SLM throw with retries remaining: throws to BullMQ, does NOT markFailed', async () => {
     mockSlm.normalize.mockRejectedValueOnce(new Error('circuit open'));
@@ -215,7 +215,7 @@ describe('NormalizeProcessor', () => {
     expect(mockJobs.markCompleted).not.toHaveBeenCalled();
   });
 
-  // ── retry semantics: final failure (last attempt) ───────────────────────
+  // ---- retry semantics: final failure (last attempt) ----------------------------------------------
 
   it('on SLM throw on the FINAL attempt: markFailed with attempt count, then throws', async () => {
     mockSlm.normalize.mockRejectedValueOnce(new Error('circuit open'));
@@ -270,7 +270,7 @@ describe('NormalizeProcessor', () => {
     expect(mockJobs.markFailed.mock.calls[0][1]).toContain('attempt 3/3');
   });
 
-  // ── non-actionable claim path ───────────────────────────────────────────
+  // ---- non-actionable claim path --------------------------------------------------------------------------------------
 
   it('logs and returns when markActive throws (row missing or terminal)', async () => {
     mockJobs.markActive.mockRejectedValueOnce(
@@ -284,7 +284,7 @@ describe('NormalizeProcessor', () => {
     expect(mockJobs.markFailed).not.toHaveBeenCalled();
   });
 
-  // ── DB write race recovery — final attempt ──────────────────────────────
+  // ---- DB write race recovery — final attempt ------------------------------------------------------------
 
   it('does not crash when markCompleted itself rejects (sweep race)', async () => {
     mockSlm.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE);

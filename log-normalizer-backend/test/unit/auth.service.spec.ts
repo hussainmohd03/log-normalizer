@@ -53,7 +53,7 @@ describe('AuthService', () => {
     service = module.get(AuthService)
   })
 
-  // ── password hashing round-trip ────────────────────────────────────────
+  // -- password hashing round-trip ----------------------------------------
 
   it('hashPassword produces a verifiable argon2id hash', async () => {
     const hash = await service.hashPassword('correct-horse-battery-staple')
@@ -71,7 +71,7 @@ describe('AuthService', () => {
     expect(await service.verifyPassword('not-a-real-hash', 'anything')).toBe(false)
   })
 
-  // ── login flow ─────────────────────────────────────────────────────────
+  // -- login flow --------------------------------------------------------─
 
   it('validateCredentials throws UnauthorizedException when user is missing', async () => {
     mockPrisma.user.findUnique.mockResolvedValueOnce(null)
@@ -123,7 +123,7 @@ describe('AuthService', () => {
     expect((missingErr as Error).message).toBe((wrongPwErr as Error).message)
   })
 
-  // ── token issue / verify ───────────────────────────────────────────────
+  // -- token issue / verify ----------------------------------------------─
 
   it('signToken delegates to JwtService with the right payload', () => {
     const token = service.signToken(SAMPLE_USER)
@@ -158,7 +158,7 @@ describe('AuthService', () => {
     expect(result).toEqual(SAMPLE_USER)
   })
 
-  // ── createUser helper ──────────────────────────────────────────────────
+  // -- createUser helper --------------------------------------------------
 
   it('createUser hashes the password before insert', async () => {
     await service.createUser({

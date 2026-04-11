@@ -49,7 +49,7 @@ describe('AuthController', () => {
     controller = module.get(AuthController)
   })
 
-  // ── login ──────────────────────────────────────────────────────────────
+  // - login -------------------------------
 
   it('login: sets the auth_token cookie with HttpOnly + SameSite=strict', async () => {
     mockAuth.validateCredentials.mockResolvedValueOnce(SAMPLE_USER)
@@ -93,7 +93,7 @@ describe('AuthController', () => {
     expect(res.cookie).not.toHaveBeenCalled()
   })
 
-  // ── logout ─────────────────────────────────────────────────────────────
+  // - logout ------------------------------─
 
   it('logout: clears the auth_token cookie', () => {
     const res = makeRes()
@@ -101,7 +101,7 @@ describe('AuthController', () => {
     expect(res.clearCookie).toHaveBeenCalledWith('auth_token', { path: '/' })
   })
 
-  // ── /me ────────────────────────────────────────────────────────────────
+  // - /me --------------------------------
 
   it('me: returns the email + role of the authenticated user principal', () => {
     const principal: AuthenticatedPrincipal = {

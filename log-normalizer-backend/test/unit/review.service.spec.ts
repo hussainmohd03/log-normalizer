@@ -168,7 +168,7 @@ describe('ReviewService', () => {
     ).rejects.toThrow(BadRequestException)
   })
 
-  // ── Supersedes chain tests (Step 4) ────────────────────────────────
+  // -- Supersedes chain tests (Step 4) --------------------------------
 
   it('submitCorrection on a previously-accepted job: creates superseding OCSFEvent', async () => {
     mockSLM.validate.mockResolvedValue({ valid: true, errors: [] })

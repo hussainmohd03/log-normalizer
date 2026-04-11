@@ -106,7 +106,7 @@ describe('RoutingService', () => {
     await expect(routingService.route(job, slmResponse)).rejects.toThrow()
   })
 
-  // ── retry idempotency: route() called twice on the same job ────────────
+  // -- retry idempotency: route() called twice on the same job ------------
 
   it('upserts OCSFEvent on retry — second route() call updates instead of duplicating', async () => {
     const job = await prisma.normalizeJob.create({ data: buildNormalizeJob() })

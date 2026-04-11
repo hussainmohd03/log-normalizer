@@ -47,7 +47,7 @@ describe('JobsService', () => {
     await prisma.$disconnect();
   });
 
-  // ─── create ────────────────────────────────────────────────────────────────
+  // -- create ----------------------------------------------------------------
 
   describe('create', () => {
     it('inserts a row with status QUEUED and returns it', async () => {
@@ -86,7 +86,7 @@ describe('JobsService', () => {
     });
   });
 
-  // ─── findById ───────────────────────────────────────────────────────────────
+  // ---- findById ----------------------------------------------------------------
 
   describe('findById', () => {
     it('returns the row when it exists', async () => {
@@ -103,7 +103,7 @@ describe('JobsService', () => {
     });
   });
 
-  // ─── markActive ─────────────────────────────────────────────────────────────
+  // ---- markActive --------------------------------------------------------------
 
   describe('markActive', () => {
     it('transitions QUEUED → ACTIVE, sets startedAt, sets attempts to 1', async () => {
@@ -163,7 +163,7 @@ describe('JobsService', () => {
     });
   });
 
-  // ─── markCompleted ──────────────────────────────────────────────────────────
+  // ---- markCompleted ----------------------------------------------------------
 
   describe('markCompleted', () => {
     it('transitions ACTIVE → COMPLETED and writes the result payload', async () => {
@@ -232,7 +232,7 @@ describe('JobsService', () => {
     });
   });
 
-  // ─── markFailed ─────────────────────────────────────────────────────────────
+  // ---- markFailed --------------------------------------------------------------
 
   describe('markFailed', () => {
     it('transitions ACTIVE → FAILED and stores the error message', async () => {
@@ -279,7 +279,7 @@ describe('JobsService', () => {
     });
   });
 
-  // ─── deleteQuietly ──────────────────────────────────────────────────────────
+  // ---- deleteQuietly ----------------------------------------------------------
 
   describe('deleteQuietly', () => {
     it('removes a QUEUED row from the database', async () => {

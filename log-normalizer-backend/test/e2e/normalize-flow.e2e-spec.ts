@@ -100,7 +100,7 @@ describe('Normalize async flow E2E', () => {
     // dynamic ESM imports). Production code is unaffected.
     sqsMock = { publish: jest.fn().mockResolvedValue('mock-msg-id') }
 
-    // ── HTTP context (AppModule) ───────────────────────────────────────
+    // - HTTP context (AppModule) -------------------
     const httpModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -121,7 +121,7 @@ describe('Normalize async flow E2E', () => {
     prisma = httpModule.get(PrismaService)
     queue = httpModule.get<Queue>(getQueueToken(NORMALIZE_QUEUE))
 
-    // ── Worker context (WorkerModule) ──────────────────────────────────
+    // - Worker context (WorkerModule) -----------------
     // Same SLM mock instance — both contexts see the same controlled
     // behaviour, and per-test mockResolvedValue / mockRejectedValue
     // calls flow through to the worker's processor.
@@ -152,7 +152,7 @@ describe('Normalize async flow E2E', () => {
     if (httpApp) await httpApp.close()
   })
 
-  // ── Helpers ──────────────────────────────────────────────────────────
+  // - Helpers -----------------------------
 
   const enqueue = async () => {
     const res = await request(httpApp.getHttpServer())
@@ -178,7 +178,7 @@ describe('Normalize async flow E2E', () => {
     throw new Error(`Job ${jobId} did not reach a terminal state within ${timeoutMs}ms`)
   }
 
-  // ── Tests ────────────────────────────────────────────────────────────
+  // - Tests ------------------------------
 
   it('happy path: enqueue → worker processes → row reaches COMPLETED with result', async () => {
     slmMock.normalize.mockResolvedValueOnce(SUCCESS_RESPONSE)
