@@ -9,14 +9,14 @@ import { buildNormalizeJob, buildSLMResponse } from 'test/factories'
 import { cleanDatabase } from 'test/helper/prisma-test'
 
 describe('RoutingService', () => {
-  let routingService: RoutingService
-  let prisma: PrismaService
-  let mockSQS: { publish: jest.Mock }
-  let mockReview: { queue: jest.Mock }
+  let routingService: RoutingService;
+  let prisma: PrismaService;
+  let mockSQS: { publish: jest.Mock };
+  let mockReview: { queue: jest.Mock };
 
   beforeAll(async () => {
-    mockSQS = { publish: jest.fn().mockResolvedValue('msg-id-123') }
-    mockReview = { queue: jest.fn() }
+    mockSQS = { publish: jest.fn().mockResolvedValue('msg-id-123') };
+    mockReview = { queue: jest.fn() };
 
     const module = await Test.createTestingModule({
       imports: [ConfigModule.forRoot()],
@@ -28,9 +28,9 @@ describe('RoutingService', () => {
       ],
     }).compile()
 
-    routingService = module.get(RoutingService)
-    prisma = module.get(PrismaService)
-  })
+    routingService = module.get(RoutingService);
+    prisma = module.get(PrismaService);
+  });
 
   beforeEach(async () => {
     await cleanDatabase(prisma)
@@ -39,8 +39,8 @@ describe('RoutingService', () => {
   })
 
   afterAll(async () => {
-    await prisma.$disconnect()
-  })
+    await prisma.$disconnect();
+  });
 
   it('accept path: creates OCSFEvent + calls SQS', async () => {
     const job = await prisma.normalizeJob.create({ data: buildNormalizeJob() })
@@ -98,7 +98,7 @@ describe('RoutingService', () => {
   })
 
   it('reject path: review queue failure propagates', async () => {
-    mockReview.queue.mockRejectedValueOnce(new Error('DB down'))
+    mockReview.queue.mockRejectedValueOnce(new Error('DB down'));
 
     const job = await prisma.normalizeJob.create({ data: buildNormalizeJob() })
     const slmResponse = buildSLMResponse({ decision: 'reject', ocsf: null, confidence: 0.2 })

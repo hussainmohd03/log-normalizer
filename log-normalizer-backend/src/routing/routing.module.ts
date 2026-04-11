@@ -4,11 +4,8 @@ import { DeliveryModule } from 'src/delivery/delivery.module';
 import { ReviewModule } from 'src/review/review.module';
 
 @Module({
-  imports: [
-    DeliveryModule,
-    ReviewModule
-  ],
+  imports: [DeliveryModule, ReviewModule],
   providers: [RoutingService],
-  exports: [RoutingService]
+  exports: [RoutingService],
 })
 export class RoutingModule {}

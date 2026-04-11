@@ -8,17 +8,20 @@ import { SLMService } from 'src/slm/slm.service';
 @SkipThrottle()
 @Controller('health')
 export class HealthController {
-  constructor(private prisma: PrismaService, private slmClient: SLMService) {}
+  constructor(
+    private prisma: PrismaService,
+    private slmClient: SLMService,
+  ) {}
 
   @Get()
-  async healthCheck(@Res() res: Response){
-    let dbCheck = "disconnected"
+  async healthCheck(@Res() res: Response) {
+    let dbCheck = 'disconnected';
     // check DB state
-    try{
+    try {
       await this.prisma.$queryRaw`SELECT 1`;
-      dbCheck = "connected" 
-    }catch {
-      dbCheck = "disconnected"
+      dbCheck = 'connected';
+    } catch {
+      dbCheck = 'disconnected';
     }
 
     // Check SLM State - call /health (later)
@@ -29,10 +32,11 @@ export class HealthController {
       slmHealth = 'unavailable';
     }
     // Check Circuit Breaker state (later)
-    const breakerState = this.slmClient.isHealthy() ? "Closed" : "Opened"
+    const breakerState = this.slmClient.isHealthy() ? 'Closed' : 'Opened';
 
     const status = dbCheck === 'connected' ? 'ok' : 'unhealthy';
-    const httpCode = status === 'ok' ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
+    const httpCode =
+      status === 'ok' ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
 
     return res.status(httpCode).json({
       status: dbCheck === 'connected' ? 'ok' : 'unhealthy',
@@ -40,6 +44,6 @@ export class HealthController {
       circuit_breaker: breakerState,
       slm_service: slmHealth,
       system: getSystemMetrics(),
-    })
+    });
   }
 }

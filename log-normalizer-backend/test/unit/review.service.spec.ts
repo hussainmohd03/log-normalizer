@@ -29,9 +29,9 @@ describe('ReviewService', () => {
       ],
     }).compile()
 
-    reviewService = module.get(ReviewService)
-    prisma = module.get(PrismaService)
-  })
+    reviewService = module.get(ReviewService);
+    prisma = module.get(PrismaService);
+  });
 
   beforeEach(async () => {
     await cleanDatabase(prisma)
@@ -40,8 +40,8 @@ describe('ReviewService', () => {
   })
 
   afterAll(async () => {
-    await prisma.$disconnect()
-  })
+    await prisma.$disconnect();
+  });
 
   it('queue(): creates ManualReview with correct fields and priority', async () => {
     const job = await prisma.normalizeJob.create({ data: buildNormalizeJob() })
@@ -98,7 +98,7 @@ describe('ReviewService', () => {
     await reviewService.queue(j2, mid, PRIORITY.NORMAL)
     await reviewService.queue(j3, high, PRIORITY.HIGH)
 
-    const pending = await reviewService.getPending()
+    const pending = await reviewService.getPending();
 
     // HIGH priority first, then NORMAL sorted by confidence ASC
     expect(pending[0].priority).toBe(PRIORITY.HIGH)
@@ -116,9 +116,20 @@ describe('ReviewService', () => {
     const { job, review } = await createPendingReview(prisma, reviewService)
     const correctedOcsf = buildCorrectedOcsf()
 
-    const updated = await reviewService.submitCorrection(review.id, correctedOcsf, 'Hussain')
-    expect(updated.correctedOCSF).toEqual(correctedOcsf)
-    expect(updated.reviewedBy).toEqual('Hussain')
+    const updated = await reviewService.submitCorrection(
+      review.id,
+      correctedOcsf,
+      'Hussain',
+    );
+    expect(updated.correctedOCSF).toEqual(correctedOcsf);
+    expect(updated.reviewedBy).toEqual('Hussain');
+
+    const ocsfEvent = await prisma.oCSFEvent.findFirst({
+      where: { rawLogId: rawLog.id },
+    });
+    expect(ocsfEvent).not.toBeNull();
+    expect(ocsfEvent!.decision).toEqual(DECISION.CORRECTED);
+  });
 
     const ocsfEvent = await prisma.oCSFEvent.findFirst({
       where: { normalizeJobId: job.id },

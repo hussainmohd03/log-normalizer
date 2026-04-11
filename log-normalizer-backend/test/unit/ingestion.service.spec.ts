@@ -57,7 +57,7 @@ describe('IngestionService', () => {
         { provide: JobsService, useValue: mockJobs },
         { provide: NormalizeProducer, useValue: mockProducer },
       ],
-    }).compile()
+    }).compile();
 
     service = module.get(IngestionService)
   })
@@ -238,7 +238,7 @@ describe('IngestionService', () => {
         { source: 'splunk', rawContent: { a: 2 } },
         { source: 'splunk', rawContent: { a: 3 } },
       ],
-    })
+    });
 
     expect(result.count).toBe(3)
     expect(result.results.map((r) => r.jobId)).toEqual(['uuid-a', 'uuid-b', 'uuid-c'])

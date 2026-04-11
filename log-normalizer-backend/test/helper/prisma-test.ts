@@ -1,4 +1,4 @@
-import { PrismaService } from "src/database/prisma.service";
+import { PrismaService } from 'src/database/prisma.service';
 
 export async function cleanDatabase(prisma: PrismaService) {
   // Delete children first (FK to NormalizeJob), then jobs, then metrics.

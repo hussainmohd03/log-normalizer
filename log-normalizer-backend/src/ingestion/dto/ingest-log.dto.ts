@@ -9,7 +9,6 @@ import {
 } from 'class-validator'
 
 export class IngestDto {
-
   @IsNotEmpty()
   @IsString()
   source!: string;

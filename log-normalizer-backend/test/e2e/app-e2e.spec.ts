@@ -20,7 +20,7 @@ describe('App E2E', () => {
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile()
+    }).compile();
 
     app = module.createNestApplication()
     app.setGlobalPrefix('api')
@@ -57,33 +57,33 @@ describe('App E2E', () => {
   })
 
   beforeEach(async () => {
-    await cleanDatabase(prisma)
-  })
+    await cleanDatabase(prisma);
+  });
 
   // The cleanDatabase helper preserves the User table — the seeded
   // analyst from beforeAll survives across tests.
 
   afterAll(async () => {
-    await app.close()
-  })
+    await app.close();
+  });
 
   // -- Health --
   it('GET /api/health returns ok', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/health')
-      .expect(200)
+      .expect(200);
 
-    expect(res.body.status).toBe('ok')
-    expect(res.body.database).toBe('connected')
-  })
+    expect(res.body.status).toBe('ok');
+    expect(res.body.database).toBe('connected');
+  });
 
   // -- Auth --
   it('POST /api/logs/ingest without API key returns 401', async () => {
     await request(app.getHttpServer())
       .post('/api/logs/ingest')
       .send({ source: 'test', rawContent: { alert: 'test' } })
-      .expect(401)
-  })
+      .expect(401);
+  });
 
   // -- Ingestion --
   it('POST /api/logs/ingest with valid body returns 202 and a queued NormalizeJob', async () => {
@@ -91,7 +91,7 @@ describe('App E2E', () => {
       .post('/api/logs/ingest')
       .set('x-api-key', process.env.API_KEY!)
       .send({ source: 'crowdstrike', rawContent: { alert_id: '123' } })
-      .expect(202)
+      .expect(202);
 
     expect(res.body.jobId).toBeDefined()
     expect(res.body.status).toBe('queued')
@@ -107,24 +107,24 @@ describe('App E2E', () => {
       .post('/api/logs/ingest')
       .set('x-api-key', process.env.API_KEY!)
       .send({ rawContent: { alert_id: '123' } })
-      .expect(400)
-  })
+      .expect(400);
+  });
 
   it('POST /api/logs/ingest with empty rawContent returns 400', async () => {
     await request(app.getHttpServer())
       .post('/api/logs/ingest')
       .set('x-api-key', process.env.API_KEY!)
       .send({ source: 'test', rawContent: {} })
-      .expect(400)
-  })
+      .expect(400);
+  });
 
   it('POST /api/logs/ingest with unknown field returns 400', async () => {
     await request(app.getHttpServer())
       .post('/api/logs/ingest')
       .set('x-api-key', process.env.API_KEY!)
       .send({ source: 'test', rawContent: { alert: 'test' }, hacker: 'me' })
-      .expect(400)
-  })
+      .expect(400);
+  });
 
   // -- Batch --
   it('POST /api/logs/ingest/batch with valid body returns 202', async () => {
@@ -137,7 +137,7 @@ describe('App E2E', () => {
           { source: 'splunk', rawContent: { alert_id: '2' } },
         ],
       })
-      .expect(202)
+      .expect(202);
 
     expect(res.body.count).toBe(2)
     expect(res.body.status).toBe('queued')
