@@ -1,4 +1,4 @@
-# LogNormalizer AI
+# Log Normalizer
 
 > Fine-tuned LLM pipeline that converts multi-vendor security alerts into OCSF v1.7.0 Detection Finding JSON, with deterministic post-processing and a human-in-the-loop correction queue.
 
