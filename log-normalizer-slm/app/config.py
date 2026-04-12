@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     base_model_path: str = "fdtn-ai/Foundation-Sec-1.1-8B-Instruct"
     adapter_path: str = "foundation-sec-finetuned" 
     device: str = "auto"
-    temperature: float = 0.1
-    max_new_tokens: int = 4700
+    temperature: float = 0.05
+    max_new_tokens: int = 2048
 
     # -- Confidence settings --------- 
     accept_threshold: float = 0.85
