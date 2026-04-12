@@ -5,6 +5,7 @@ from app.postprocess.rules.field_fixes import (
     fix_process_pid_int,
     run_field_fix_rules,
     strip_device_os_string,
+    strip_placeholder_values,
 )
 
 
@@ -186,6 +187,123 @@ def test_strip_device_os_string_no_op_when_device_not_dict():
     ocsf = {"device": "not-a-dict"}
     result = strip_device_os_string(ocsf)
     assert result.fixes == []
+
+
+def test_fix_observable_types_digit_value_not_port_when_name_is_alarm_id():
+    ocsf = {
+        "observables": [
+            {"type": "string", "name": "alarmId", "value": "625892"}
+        ]
+    }
+    result = fix_observable_types(ocsf)
+    assert ocsf["observables"][0].get("type_id") != 11
+    assert result.fixes == []
+
+
+def test_fix_observable_types_digit_value_is_port_when_name_is_port():
+    ocsf = {
+        "observables": [
+            {"type": "string", "name": "dst_port", "value": "443"}
+        ]
+    }
+    result = fix_observable_types(ocsf)
+    assert ocsf["observables"][0]["type"] == "Port"
+    assert ocsf["observables"][0]["type_id"] == 11
+    assert result.fixes
+
+
+def test_fix_observable_types_digit_value_not_port_when_name_is_rule_name():
+    ocsf = {
+        "observables": [
+            {"type": "integer", "name": "rule_id", "value": "12345"}
+        ]
+    }
+    result = fix_observable_types(ocsf)
+    assert ocsf["observables"][0].get("type_id") != 11
+
+
+def test_fix_observable_types_digit_value_not_port_when_name_missing():
+    ocsf = {
+        "observables": [
+            {"type": "string", "value": "625892"}
+        ]
+    }
+    result = fix_observable_types(ocsf)
+    assert ocsf["observables"][0].get("type_id") != 11
+
+
+def test_strip_placeholder_values_removes_unknown_from_evidences():
+    ocsf = {
+        "evidences": [
+            {"url": "Unknown", "ip_addr": "10.0.0.1"}
+        ]
+    }
+    result = strip_placeholder_values(ocsf)
+    assert "url" not in ocsf["evidences"][0]
+    assert ocsf["evidences"][0]["ip_addr"] == "10.0.0.1"
+    assert any("evidences[0].url" in f for f in result.fixes)
+
+
+def test_strip_placeholder_values_removes_na_variants():
+    ocsf = {
+        "evidences": [
+            {"email_addr": "N/A", "process": {"name": "n/a"}}
+        ]
+    }
+    result = strip_placeholder_values(ocsf)
+    assert "email_addr" not in ocsf["evidences"][0]
+    assert "name" not in ocsf["evidences"][0]["process"]
+    assert len(result.fixes) == 2
+
+
+def test_strip_placeholder_values_removes_from_metadata():
+    ocsf = {
+        "metadata": {"product": {"version": "Unspecified", "name": "Splunk"}}
+    }
+    result = strip_placeholder_values(ocsf)
+    assert "version" not in ocsf["metadata"]["product"]
+    assert ocsf["metadata"]["product"]["name"] == "Splunk"
+    assert any("metadata.product.version" in f for f in result.fixes)
+
+
+def test_strip_placeholder_values_case_insensitive():
+    ocsf = {"evidences": [{"field": "UNKNOWN"}]}
+    result = strip_placeholder_values(ocsf)
+    assert "field" not in ocsf["evidences"][0]
+    assert result.fixes
+
+
+def test_strip_placeholder_values_matches_none_and_null():
+    ocsf = {"evidences": [{"a": "None", "b": "null", "c": "TBD"}]}
+    result = strip_placeholder_values(ocsf)
+    assert ocsf["evidences"][0] == {}
+    assert len(result.fixes) == 3
+
+
+def test_strip_placeholder_values_no_op_when_no_placeholders():
+    ocsf = {
+        "evidences": [{"url": "https://example.com"}],
+        "metadata": {"version": "1.7.0"},
+    }
+    result = strip_placeholder_values(ocsf)
+    assert result.fixes == []
+
+
+def test_strip_placeholder_values_no_op_when_sections_missing():
+    ocsf = {"device": {"hostname": "h1"}}
+    result = strip_placeholder_values(ocsf)
+    assert result.fixes == []
+
+
+def test_strip_placeholder_values_handles_nested_lists():
+    ocsf = {
+        "evidences": [
+            {"nested": [{"inner": "unknown"}]}
+        ]
+    }
+    result = strip_placeholder_values(ocsf)
+    assert "inner" not in ocsf["evidences"][0]["nested"][0]
+    assert result.fixes
 
 
 def test_run_field_fix_rules_dispatches_all_five_rules():

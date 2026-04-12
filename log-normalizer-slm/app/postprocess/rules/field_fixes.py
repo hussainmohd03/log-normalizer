@@ -10,8 +10,18 @@ _HASH_RE = re.compile(r"^[a-fA-F0-9]{32,128}$")
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 _DOMAIN_RE = re.compile(r"^[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+$")
 
+_PLACEHOLDER_RE = re.compile(
+    r"^(unknown|n/?a|unspecified|none|null|tbd)$", re.IGNORECASE
+)
 
-def _infer_observable_type_from_value(value: Any) -> str | None:
+_PORT_FIELD_NAMES = frozenset({
+    "port", "src_port", "dst_port", "local_port", "remote_port",
+})
+
+
+def _infer_observable_type_from_value(
+    value: Any, name: str | None = None,
+) -> str | None:
     if not isinstance(value, str) or not value:
         return None
     if _IPV4_RE.match(value):
@@ -21,7 +31,10 @@ def _infer_observable_type_from_value(value: Any) -> str | None:
     if _EMAIL_RE.match(value):
         return "Email Address"
     if value.isdigit():
-        return "Port"
+        port_name = (name or "").strip().lower()
+        if port_name in _PORT_FIELD_NAMES:
+            return "Port"
+        return None
     if _DOMAIN_RE.match(value):
         return "Hostname"
     return None
@@ -46,7 +59,9 @@ def fix_observable_types(ocsf: dict[str, Any]) -> RuleResult:
             if hit is not None:
                 canonical_id, canonical_type = hit
             elif old_type.lower() in ("string", "str", "int", "integer"):
-                inferred = _infer_observable_type_from_value(obs.get("value"))
+                inferred = _infer_observable_type_from_value(
+                    obs.get("value"), obs.get("name"),
+                )
                 if inferred:
                     hit = lookup_observable_type(inferred)
                     if hit is not None:
@@ -163,6 +178,39 @@ def strip_device_os_string(ocsf: dict[str, Any]) -> RuleResult:
     return result
 
 
+def _strip_placeholders_recursive(
+    obj: Any, path: str, removed: list[str],
+) -> Any:
+    if isinstance(obj, dict):
+        keys_to_remove: list[str] = []
+        for k, v in obj.items():
+            child_path = f"{path}.{k}" if path else k
+            if isinstance(v, str) and _PLACEHOLDER_RE.match(v.strip()):
+                keys_to_remove.append(k)
+                removed.append(f"stripped placeholder {child_path}")
+            else:
+                obj[k] = _strip_placeholders_recursive(v, child_path, removed)
+        for k in keys_to_remove:
+            del obj[k]
+        return obj
+    if isinstance(obj, list):
+        for idx, item in enumerate(obj):
+            child_path = f"{path}[{idx}]"
+            obj[idx] = _strip_placeholders_recursive(item, child_path, removed)
+        return obj
+    return obj
+
+
+def strip_placeholder_values(ocsf: dict[str, Any]) -> RuleResult:
+    result = RuleResult()
+    for section in ("evidences", "metadata"):
+        target = ocsf.get(section)
+        if target is None:
+            continue
+        _strip_placeholders_recursive(target, section, result.fixes)
+    return result
+
+
 def run_field_fix_rules(ocsf: dict[str, Any]) -> RuleResult:
     result = RuleResult()
     result.merge(fix_observable_types(ocsf))
@@ -170,4 +218,5 @@ def run_field_fix_rules(ocsf: dict[str, Any]) -> RuleResult:
     result.merge(fix_email_from_string(ocsf))
     result.merge(fix_process_pid_int(ocsf))
     result.merge(strip_device_os_string(ocsf))
+    result.merge(strip_placeholder_values(ocsf))
     return result
