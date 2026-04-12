@@ -63,9 +63,6 @@ docker compose up -d
 # 3. Watch the logs while everything starts
 docker compose logs -f
 
-# 4. Once "Model ready for inference" appears in the slm service logs,
-#    smoke-test with:
-./scripts/smoke-test.sh
 ```
 
 First boot takes 3-5 minutes because the SLM downloads the base model weights the first time. Subsequent boots are much faster — the model is cached in a named volume.
@@ -326,7 +323,7 @@ npm run test:e2e               # e2e requires real Postgres + Redis
 
 ```bash
 cd log-normalizer-slm
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv && source .venv/Scripts/Activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload  # [VERIFY: exact command]
 pytest tests/unit
