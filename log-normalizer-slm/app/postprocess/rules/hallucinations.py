@@ -5,7 +5,7 @@ from app.postprocess.result import RuleResult
 
 
 _MITRE_PATTERN = re.compile(
-    r"\bT\d{4}(?:\.\d{3})?\b|\bTA\d{4}\b|tactic|technique|att&ck|mitre",
+    r"\bT\d{4}(?:\.\d{3})?\b|\bTA\d{4}\b|att&ck|mitre",
     re.IGNORECASE,
 )
 
@@ -56,6 +56,15 @@ def _raw_contains_substring(raw_alert: dict[str, Any], needle: str) -> bool:
     return False
 
 
+def _has_tactic_as_technique(attack: dict[str, Any]) -> bool:
+    technique = attack.get("technique")
+    if isinstance(technique, dict):
+        uid = technique.get("uid", "")
+        if isinstance(uid, str) and uid.startswith("TA"):
+            return True
+    return False
+
+
 def strip_hallucinated_mitre(
     ocsf: dict[str, Any],
     raw_alert: dict[str, Any],
@@ -65,16 +74,30 @@ def strip_hallucinated_mitre(
     if not isinstance(finding_info, dict):
         return result
     attacks = finding_info.get("attacks")
-    if not attacks:
+    if not isinstance(attacks, list) or not attacks:
         return result
 
-    if _raw_has_mitre_reference(raw_alert):
+    has_mitre = _raw_has_mitre_reference(raw_alert)
+
+    if not has_mitre:
+        del finding_info["attacks"]
+        result.hallucinations.append(
+            "stripped hallucinated finding_info.attacks "
+            "(raw alert has no MITRE references)"
+        )
         return result
 
-    del finding_info["attacks"]
-    result.hallucinations.append(
-        "stripped hallucinated finding_info.attacks (raw alert has no MITRE references)"
-    )
+    cleaned = [a for a in attacks if not _has_tactic_as_technique(a)]
+    stripped_count = len(attacks) - len(cleaned)
+    if stripped_count:
+        finding_info["attacks"] = cleaned if cleaned else None
+        if not cleaned:
+            del finding_info["attacks"]
+        for _ in range(stripped_count):
+            result.hallucinations.append(
+                "stripped attack with tactic UID used as technique"
+            )
+
     return result
 
 

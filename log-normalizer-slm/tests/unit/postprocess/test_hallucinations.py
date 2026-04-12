@@ -43,11 +43,52 @@ def test_strip_mitre_no_op_when_raw_mentions_attack_keyword():
     assert result.hallucinations == []
 
 
-def test_strip_mitre_no_op_when_raw_mentions_tactic_word():
+def test_strip_mitre_strips_when_raw_only_has_tactic_word():
     ocsf = {"finding_info": {"attacks": [{"technique": {"uid": "T1485"}}]}}
     raw = {"category": "tactic: defense evasion"}
     result = strip_hallucinated_mitre(ocsf, raw)
-    assert result.hallucinations == []
+    assert "attacks" not in ocsf["finding_info"]
+    assert len(result.hallucinations) == 1
+
+
+def test_strip_mitre_strips_when_raw_only_has_technique_word():
+    ocsf = {"finding_info": {"attacks": [{"technique": {"uid": "T1078"}}]}}
+    raw = {"description": "technique used by attacker"}
+    result = strip_hallucinated_mitre(ocsf, raw)
+    assert "attacks" not in ocsf["finding_info"]
+    assert len(result.hallucinations) == 1
+
+
+def test_strip_mitre_strips_ta_as_technique_even_with_mitre_refs():
+    ocsf = {
+        "finding_info": {
+            "attacks": [
+                {"tactic": {"uid": "TA0001"}, "technique": {"uid": "TA0004"}},
+                {"tactic": {"uid": "TA0001"}, "technique": {"uid": "T1078"}},
+            ]
+        }
+    }
+    raw = {"mitre_attack_ids": ["T1078"]}
+    result = strip_hallucinated_mitre(ocsf, raw)
+    assert len(ocsf["finding_info"]["attacks"]) == 1
+    assert ocsf["finding_info"]["attacks"][0]["technique"]["uid"] == "T1078"
+    assert len(result.hallucinations) == 1
+    assert "tactic UID" in result.hallucinations[0]
+
+
+def test_strip_mitre_removes_all_ta_as_technique():
+    ocsf = {
+        "finding_info": {
+            "attacks": [
+                {"tactic": {"uid": "TA0001"}, "technique": {"uid": "TA0001"}},
+                {"tactic": {"uid": "TA0004"}, "technique": {"uid": "TA0004"}},
+            ]
+        }
+    }
+    raw = {"mitre_ids": ["TA0001", "TA0004"]}
+    result = strip_hallucinated_mitre(ocsf, raw)
+    assert "attacks" not in ocsf["finding_info"]
+    assert len(result.hallucinations) == 2
 
 
 def test_strip_mitre_no_op_when_no_attacks():
