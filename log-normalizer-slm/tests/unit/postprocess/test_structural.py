@@ -1,7 +1,9 @@
 from app.postprocess.rules.structural import (
+    fill_time_from_start_time,
     fix_evidence_network_nesting,
     move_device_account_to_owner,
     move_root_fields_from_finding_info,
+    normalize_device_agent_to_list,
     run_structural_rules,
     strip_metadata_invented_fields,
 )
@@ -212,12 +214,86 @@ def test_strip_metadata_invented_fields_no_op_when_metadata_not_dict():
     assert result.fixes == []
 
 
-def test_run_structural_rules_dispatches_all_four_rules():
+def test_fill_time_from_start_time_copies_when_time_missing():
+    ocsf = {"start_time": "2025-02-22T18:50:10Z"}
+    result = fill_time_from_start_time(ocsf)
+    assert ocsf["time"] == "2025-02-22T18:50:10Z"
+    assert result.fixes == ["set time from start_time"]
+
+
+def test_fill_time_from_start_time_no_op_when_time_present():
+    ocsf = {"time": "2025-01-01T00:00:00Z", "start_time": "2025-02-22T18:50:10Z"}
+    result = fill_time_from_start_time(ocsf)
+    assert ocsf["time"] == "2025-01-01T00:00:00Z"
+    assert result.fixes == []
+
+
+def test_fill_time_from_start_time_no_op_when_no_start_time():
+    ocsf = {}
+    result = fill_time_from_start_time(ocsf)
+    assert "time" not in ocsf
+    assert result.fixes == []
+
+
+def test_fill_time_from_start_time_fires_when_time_is_none():
+    ocsf = {"time": None, "start_time": "2025-02-22T18:50:10Z"}
+    result = fill_time_from_start_time(ocsf)
+    assert ocsf["time"] == "2025-02-22T18:50:10Z"
+    assert result.fixes == ["set time from start_time"]
+
+
+def test_fill_time_from_start_time_preserves_int_start_time():
+    ocsf = {"start_time": 1700000000}
+    result = fill_time_from_start_time(ocsf)
+    assert ocsf["time"] == 1700000000
+    assert result.fixes == ["set time from start_time"]
+
+
+def test_normalize_device_agent_wraps_dict_in_list():
+    ocsf = {"device": {"agent": {"name": "Falcon", "uid": "a1"}}}
+    result = normalize_device_agent_to_list(ocsf)
+    assert ocsf["device"]["agent"] == [{"name": "Falcon", "uid": "a1"}]
+    assert result.fixes == ["wrapped device.agent in list"]
+
+
+def test_normalize_device_agent_no_op_when_already_list():
+    ocsf = {"device": {"agent": [{"name": "Falcon"}]}}
+    result = normalize_device_agent_to_list(ocsf)
+    assert ocsf["device"]["agent"] == [{"name": "Falcon"}]
+    assert result.fixes == []
+
+
+def test_normalize_device_agent_no_op_when_agent_missing():
+    ocsf = {"device": {"hostname": "h1"}}
+    result = normalize_device_agent_to_list(ocsf)
+    assert result.fixes == []
+
+
+def test_normalize_device_agent_no_op_when_device_missing():
+    ocsf = {}
+    result = normalize_device_agent_to_list(ocsf)
+    assert result.fixes == []
+
+
+def test_normalize_device_agent_no_op_when_device_not_dict():
+    ocsf = {"device": "not-a-dict"}
+    result = normalize_device_agent_to_list(ocsf)
+    assert result.fixes == []
+
+
+def test_normalize_device_agent_no_op_when_agent_is_none():
+    ocsf = {"device": {"agent": None}}
+    result = normalize_device_agent_to_list(ocsf)
+    assert result.fixes == []
+
+
+def test_run_structural_rules_dispatches_all_six_rules():
     ocsf = {
         "finding_info": {"severity_id": 4},
         "evidences": [{"network": {"src_endpoint": {"ip": "1.1.1.1"}}}],
-        "device": {"account": {"name": "alice"}},
+        "device": {"account": {"name": "alice"}, "agent": {"name": "Falcon"}},
         "metadata": {"version": "1.7.0", "created_time": 100},
+        "start_time": "2025-01-01T00:00:00Z",
     }
     result = run_structural_rules(ocsf)
 
@@ -225,9 +301,13 @@ def test_run_structural_rules_dispatches_all_four_rules():
     assert ocsf["evidences"][0]["src_endpoint"] == {"ip": "1.1.1.1"}
     assert ocsf["device"]["owner"] == {"account": {"name": "alice"}}
     assert ocsf["metadata"] == {"version": "1.7.0"}
+    assert ocsf["time"] == "2025-01-01T00:00:00Z"
+    assert ocsf["device"]["agent"] == [{"name": "Falcon"}]
 
     fix_text = " ".join(result.fixes)
     assert "moved finding_info.severity_id" in fix_text
     assert "flattened evidences[0]" in fix_text
     assert "moved device.account" in fix_text
     assert "stripped metadata.created_time" in fix_text
+    assert "set time from start_time" in fix_text
+    assert "wrapped device.agent in list" in fix_text

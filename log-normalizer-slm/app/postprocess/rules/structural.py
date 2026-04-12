@@ -102,10 +102,38 @@ def strip_metadata_invented_fields(ocsf: dict[str, Any]) -> RuleResult:
     return result
 
 
+def fill_time_from_start_time(ocsf: dict[str, Any]) -> RuleResult:
+    result = RuleResult()
+    if "time" in ocsf and ocsf["time"] is not None:
+        return result
+    start_time = ocsf.get("start_time")
+    if start_time is None:
+        return result
+    ocsf["time"] = start_time
+    result.fixes.append("set time from start_time")
+    return result
+
+
+def normalize_device_agent_to_list(ocsf: dict[str, Any]) -> RuleResult:
+    result = RuleResult()
+    device = ocsf.get("device")
+    if not isinstance(device, dict):
+        return result
+    agent = device.get("agent")
+    if agent is None or isinstance(agent, list):
+        return result
+    if isinstance(agent, dict):
+        device["agent"] = [agent]
+        result.fixes.append("wrapped device.agent in list")
+    return result
+
+
 def run_structural_rules(ocsf: dict[str, Any]) -> RuleResult:
     result = RuleResult()
     result.merge(move_root_fields_from_finding_info(ocsf))
     result.merge(fix_evidence_network_nesting(ocsf))
     result.merge(move_device_account_to_owner(ocsf))
     result.merge(strip_metadata_invented_fields(ocsf))
+    result.merge(fill_time_from_start_time(ocsf))
+    result.merge(normalize_device_agent_to_list(ocsf))
     return result
