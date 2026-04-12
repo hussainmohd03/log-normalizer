@@ -46,7 +46,7 @@ This is the most important thing to understand about this service.
                  └──────────────────────────┘
 ```
 
-The HTTP process handles requests and publishes jobs to the queue. The worker process pulls jobs from the queue and runs them. They communicate about job state transitions via **Redis pub/sub**, not in-memory events — they are separate Node processes with separate memory spaces.
+The HTTP process handles requests and publishes jobs to the queue. The worker process pulls jobs from the queue and runs them. They communicate about job state transitions via **Redis pub/sub**, not in-memory events - they are separate Node processes with separate memory spaces.
 
 The practical consequence: if you're debugging a "job was enqueued but never ran" issue, check **both** process logs. The HTTP process owns the enqueue step; the worker process owns everything after.
 
@@ -163,7 +163,7 @@ model NormalizeJob {
   status                  JobStatus  @default(QUEUED)
 
   // Input
-  rawLog                  Json       // not String — machine clients push objects
+  rawLog                  Json       // not String - machine clients push objects
   source                  String     // vendor identifier (splunk, crowdstrike, ...)
   format                  String
 
@@ -186,8 +186,8 @@ model NormalizeJob {
   error                   String?
 
   // Post-processor audit trail
-  fixesApplied            Json?      // string[] — rule messages for fixes
-  hallucinationsStripped  Json?      // string[] — rule messages for stripped hallucinations
+  fixesApplied            Json?      // string[] - rule messages for fixes
+  hallucinationsStripped  Json?      // string[] - rule messages for stripped hallucinations
 
   // Timing
   createdAt               DateTime   @default(now())
@@ -196,7 +196,7 @@ model NormalizeJob {
   completedAt             DateTime?
 
   // Relations
-  ocsfEvents              OCSFEvent[]   // multiple — see supersedes chain below
+  ocsfEvents              OCSFEvent[]   // multiple - see supersedes chain below
   processingMetric        ProcessingMetric?
   manualReview            ManualReview?
 
@@ -280,7 +280,7 @@ enum CorrectionType {
 ```prisma
 model OCSFEvent {
   id                 String     @id @default(uuid())
-  normalizeJobId     String     // NOT @unique — multiple events per job
+  normalizeJobId     String     // NOT @unique - multiple events per job
   normalizeJob       NormalizeJob @relation(fields: [normalizeJobId], references: [id], onDelete: Cascade)
 
   data               Json       // the OCSF payload
@@ -305,7 +305,7 @@ const current = await prisma.oCSFEvent.findFirst({
 
 ### `ProcessingMetric`
 
-1:1 with `NormalizeJob` (`@unique` on `normalizeJobId`). Represents the original model run. **Corrections do not create new metric rows** — the metric is about the model's performance, not the corrected output.
+1:1 with `NormalizeJob` (`@unique` on `normalizeJobId`). Represents the original model run. **Corrections do not create new metric rows** - the metric is about the model's performance, not the corrected output.
 
 ### `TrainingExport`
 
@@ -332,11 +332,11 @@ model TrainingExport {
 
 | Route | Guard | Roles | Notes |
 |---|---|---|---|
-| `POST /auth/login` | none | — | public |
+| `POST /auth/login` | none | - | public |
 | `GET /auth/me` | `JwtAuthGuard` | any | returns the current user |
 | `POST /auth/logout` | `JwtAuthGuard` | any | clears the cookie |
-| `POST /logs/ingest` | `ApiKeyAuthGuard` | — | machine ingestion only |
-| `POST /logs/ingest/batch` | `ApiKeyAuthGuard` | — | machine ingestion only |
+| `POST /logs/ingest` | `ApiKeyAuthGuard` | - | machine ingestion only |
+| `POST /logs/ingest/batch` | `ApiKeyAuthGuard` | - | machine ingestion only |
 | `GET /jobs` | `JwtAuthGuard` | any | browse with filters and pagination |
 | `GET /jobs/:id` | `JwtOrApiKeyAuthGuard` | any | single job detail |
 | `GET /jobs/:id/events` | `JwtOrApiKeyAuthGuard` | any | SSE stream |
@@ -350,11 +350,11 @@ model TrainingExport {
 | `DELETE /users/:id` | `JwtAuthGuard` + `RolesGuard` | `ADMIN` | self-delete + last-admin guards |
 | `GET /admin/training-data/stats` | `JwtAuthGuard` + `RolesGuard` | `ADMIN` | |
 | `POST /admin/training-data/export` | `JwtAuthGuard` + `RolesGuard` | `ADMIN` | atomic export, returns JSONL |
-| `GET /health` | none | — | load balancer probe |
+| `GET /health` | none | - | load balancer probe |
 
 ### Bootstrap admin
 
-On `OnModuleInit`, `AuthService` checks for an existing admin with `BOOTSTRAP_ADMIN_EMAIL`. If none exists, it creates one with the bootstrapped password. Idempotent — running it twice does nothing.
+On `OnModuleInit`, `AuthService` checks for an existing admin with `BOOTSTRAP_ADMIN_EMAIL`. If none exists, it creates one with the bootstrapped password. Idempotent - running it twice does nothing.
 
 ### Password hashing
 
@@ -410,7 +410,7 @@ BullMQ is configured with `attempts: 3, backoff: { type: 'exponential', delay: 5
 - `markActive` is idempotent (`WHERE status IN (QUEUED, ACTIVE)`).
 - `OCSFEvent` is created once per accepted run; retries on a previously-failed job that never reached the accept path simply create the row on the next successful attempt.
 - `ProcessingMetric` and `ManualReview` use `upsert` keyed on `normalizeJobId` uniqueness.
-- SQS publish uses a deduplication ID derived from `normalizeJobId` on FIFO queues. On standard queues (current deployment), duplicates are possible — a startup warning is logged.
+- SQS publish uses a deduplication ID derived from `normalizeJobId` on FIFO queues. On standard queues (current deployment), duplicates are possible - a startup warning is logged.
 - `markFailed` is called ONLY on the final attempt (tracked via `job.attemptsMade` vs `job.opts.attempts`). Intermediate failures throw, letting BullMQ retry.
 
 ### Reconciliation sweep
@@ -465,7 +465,7 @@ SQS publish failures are logged but do not roll back the DB transaction. The dat
 | `AWS_REGION` | AWS region | If SQS set |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | AWS credentials | If SQS set |
 | `PORT` | HTTP API port. Default: `3000` | No |
-| `RECONCILE_BATCH_SIZE` | Max rows per reconciliation sweep iteration. Default: `100` [VERIFY] | No |
+| `RECONCILE_BATCH_SIZE` | Max rows per reconciliation sweep iteration. Default: `100`  | No |
 
 ---
 
@@ -485,8 +485,8 @@ npx prisma generate
 npm run dev
 
 # Or run them separately in two terminals:
-npm run dev:http       # [VERIFY: script name]
-npm run dev:worker     # [VERIFY: script name]
+npm run dev:http       
+npm run dev:worker    
 
 # Build
 npm run build          # produces dist/ for both entrypoints
@@ -500,9 +500,9 @@ npx tsc -b
 
 ### Prisma workflow
 
-- `npx prisma migrate dev --name <snake_case_description>` — creates a new migration file and applies it to dev.
-- `npx prisma migrate deploy` — applies pending migrations in prod. Called by the dedicated `migrate` service in compose.
-- `npx prisma studio` — GUI for the dev database. Useful for one-off fixes but not for routine ops — use the admin UI.
+- `npx prisma migrate dev --name <snake_case_description>` - creates a new migration file and applies it to dev.
+- `npx prisma migrate deploy` - applies pending migrations in prod. Called by the dedicated `migrate` service in compose.
+- `npx prisma studio` - GUI for the dev database. Useful for one-off fixes but not for routine ops - use the admin UI.
 - **Never edit an existing migration file.** Create a new one that corrects the previous.
 
 ---
@@ -543,7 +543,7 @@ npm run test:watch
 
 ### Why the e2e suite matters
 
-Unit tests use `Test.createTestingModule({ providers: [...] })`, which bypasses the module graph entirely. Module wiring bugs — a forgotten import, a `ConfigModule` registered as a class instead of `ConfigModule.forRoot()`, a provider missing from a module's `providers` array — only surface when the actual `AppModule` and `WorkerModule` boot end-to-end. These are the kinds of bugs that 404 every route or refuse to start the worker.
+Unit tests use `Test.createTestingModule({ providers: [...] })`, which bypasses the module graph entirely. Module wiring bugs - a forgotten import, a `ConfigModule` registered as a class instead of `ConfigModule.forRoot()`, a provider missing from a module's `providers` array - only surface when the actual `AppModule` and `WorkerModule` boot end-to-end. These are the kinds of bugs that 404 every route or refuse to start the worker.
 
 **Run both layers before every release.** Unit tests verify logic; e2e tests verify wiring. They are not redundant.
 
@@ -561,7 +561,7 @@ All `NormalizeJob` status updates use `updateMany` with a `WHERE status IN (...)
 
 ### The supersedes chain
 
-`OCSFEvent.normalizeJobId` is **not** unique. There can be many events per job. The "current" event is the one where `supersededById IS NULL`. Always query with that filter — never assume the first row is current.
+`OCSFEvent.normalizeJobId` is **not** unique. There can be many events per job. The "current" event is the one where `supersededById IS NULL`. Always query with that filter - never assume the first row is current.
 
 When inserting a new corrected event:
 
@@ -572,7 +572,7 @@ When inserting a new corrected event:
 
 ### The `fixesApplied` and `hallucinationsStripped` fields
 
-These come from the SLM response and flow through `CompleteNormalizeJobDto` → `JobsService.markCompleted` → Postgres → `job-response.mapper` → API. If you add a new audit field, update all four layers. There's a defensive test in the mapper that drops non-string entries from the JSONB arrays — preserve that when extending.
+These come from the SLM response and flow through `CompleteNormalizeJobDto` → `JobsService.markCompleted` → Postgres → `job-response.mapper` → API. If you add a new audit field, update all four layers. There's a defensive test in the mapper that drops non-string entries from the JSONB arrays - preserve that when extending.
 
 ### The training data system prompt constant
 
@@ -589,7 +589,7 @@ All logger calls use `this.logger.log({ ... }, 'event.name')` with object payloa
 - Actor cannot delete themselves.
 - The last remaining admin cannot be deleted.
 
-Both are belt-and-suspenders — the frontend should also hide the delete button on the actor's own row, but the backend is the source of truth.
+Both are belt-and-suspenders - the frontend should also hide the delete button on the actor's own row, but the backend is the source of truth.
 
 ---
 
@@ -599,5 +599,5 @@ Both are belt-and-suspenders — the frontend should also hide the delete button
 - **No password reset, email verification, or account lockout.**
 - **Standard SQS queue, not FIFO.** Publish code supports both; switching is a queue URL change only. On standard queues, a retry can publish the same OCSF event twice downstream.
 - **SSE across multi-instance backend is untested.** Uses BullMQ QueueEvents (Redis pub/sub) so should work in theory.
-- **No admin reconciliation trigger.** The sweep is `@Cron` only — no `POST /admin/reconciliation/run`.
+- **No admin reconciliation trigger.** The sweep is `@Cron` only - no `POST /admin/reconciliation/run`.
 - **No SQS retry queue for republish failures.** When a corrected event fails to publish, the failure is logged and the DB transaction still commits. Add retry if downstream consumers depend on every correction reaching them.
