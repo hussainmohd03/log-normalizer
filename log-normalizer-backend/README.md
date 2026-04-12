@@ -375,30 +375,30 @@ argon2id with OWASP 2024 parameters. See `auth.service.ts` for the exact cost se
 The exact sequence when a job lands:
 
 ```
-HTTP PROCESS                          REDIS                WORKER PROCESS
-────────────                          ─────                ──────────────
+HTTP PROCESS                                  REDIS                                         WORKER PROCESS
+────────────                                  ─────                                         ──────────────
 IngestionService.create
   INSERT NormalizeJob (status=QUEUED)
   NormalizeProducer.enqueue(row.id) ──────► queue.add({jobId: row.id}, {jobId: row.id})
 return 202
-                                                            BullMQ pulls job
-                                                            NormalizeProcessor.process(bullJob)
-                                                              ├── markActive (updateMany WHERE status IN (QUEUED, ACTIVE))
-                                                              │   ◄── emits 'active' event ──► QueueEvents listener
-                                                              │                                 (HTTP process)
-                                                              │                                 reloads row, emits SSE
-                                                              ├── SLMService.normalize()
-                                                              │   HTTP to Python service
-                                                              │   (150-300s, opossum timeout 860s)
-                                                              ├── RoutingService.route()
-                                                              │   create OCSFEvent + ProcessingMetric OR
-                                                              │   create ManualReview
-                                                              │   publish to SQS if decision=accept
-                                                              └── markCompleted
-                                                                  updateMany with all fields
-                                                                  ◄── emits 'completed' event ──► QueueEvents listener
-                                                                                                    reloads row, emits SSE,
-                                                                                                    closes connection
+                                                                                            BullMQ pulls job
+                                                                                            NormalizeProcessor.process(bullJob)
+                                                                                              ├── markActive (updateMany WHERE status IN (QUEUED, ACTIVE))
+                                                                                              │   ◄── emits 'active' event ──► QueueEvents listener
+                                                                                              │                                 (HTTP process)
+                                                                                              │                                 reloads row, emits SSE
+                                                                                              ├── SLMService.normalize()
+                                                                                              │   HTTP to Python service
+                                                                                              │   
+                                                                                              ├── RoutingService.route()
+                                                                                              │   create OCSFEvent + ProcessingMetric OR
+                                                                                              │   create ManualReview
+                                                                                              │   publish to SQS if decision=accept
+                                                                                              └── markCompleted
+                                                                                                  updateMany with all fields
+                                                                                                  ◄── emits 'completed' event ──► QueueEvents listener
+                                                                                                                                    reloads row, emits SSE,
+                                                                                                                                    closes connection
 ```
 
 The contract worth memorizing: **`RoutingService.route()` runs BEFORE `markCompleted`.** Any consumer observing `status === COMPLETED` can always join to downstream rows without racing.
