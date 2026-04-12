@@ -1,4 +1,4 @@
-# LogNormalizer AI
+# Log Normalizer
 
 > Fine-tuned LLM pipeline that converts multi-vendor security alerts into OCSF v1.7.0 Detection Finding JSON, with deterministic post-processing and a human-in-the-loop correction queue.
 
@@ -21,7 +21,7 @@ The model is fine-tuned from Foundation-Sec-1.1-8B-Instruct on a hand-labeled tr
 
 ## Architecture at a glance
 
-![system_design](assets\system_design.png)
+![system_design](assets/system_design.png)
 
 The system has **three code services** plus **three infrastructure dependencies**. The backend runs as **two separate Node processes** (HTTP + worker) from the same built image — this is the most important thing to understand about the deployment model.
 
