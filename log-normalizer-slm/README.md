@@ -208,7 +208,6 @@ The system prompt is built in `app/utils/prompt_builder.py`. It instructs the mo
 - Compute `type_uid = class_uid * 100 + activity_id`
 - Omit fields with no value (no nulls, no empty strings, no placeholders)
 
-[VERIFY: read the actual prompt_builder.py file and copy the real prompt content into this section before handoff]
 
 **The exact content of this prompt is also copied into the backend** at `log-normalizer-backend/src/training-data/training-prompt.constant.ts`. The backend uses it when exporting analyst corrections as training data, so the exported JSONL matches the prompt the model was trained against. **If you change the prompt here, also update the backend constant.** A test in the backend asserts the constant starts with the expected first words as a minimum drift detector, but it cannot catch deeper changes.
 
@@ -318,7 +317,6 @@ else:
     decision = "reject"
 ```
 
-[VERIFY: exact threshold values and weights]
 
 The breakdown is returned in the response as an object:
 
@@ -352,7 +350,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # With a GPU:
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload    # [VERIFY: exact command]
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload    
 
 # Without a GPU (CPU inference  slow):
 # Make sure settings.device defaults to 'cpu' in your environment
@@ -397,11 +395,11 @@ Returns:
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `BASE_MODEL_PATH` | HuggingFace model ID or local path | [VERIFY] |
-| `ADAPTER_PATH` | Relative path to the LoRA adapter directory | [VERIFY] |
+| `BASE_MODEL_PATH` | HuggingFace model ID or local path |  |
+| `ADAPTER_PATH` | Relative path to the LoRA adapter directory | |
 | `DEVICE` | `cuda` / `cuda:0` / `cpu` | `cuda` |
-| `MAX_NEW_TOKENS` | Generation length cap | [VERIFY] |
-| `TEMPERATURE` | Sampling temperature | [VERIFY] |
+| `MAX_NEW_TOKENS` | Generation length cap | |
+| `TEMPERATURE` | Sampling temperature |  |
 | `PORT` | FastAPI port | `8000` |
 | `INFERENCE_TIMEOUT_SECONDS` | `asyncio.wait_for` around the generate call | `600` |
 

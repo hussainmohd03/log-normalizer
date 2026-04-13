@@ -60,7 +60,7 @@ This is where the human-in-the-loop loop actually happens. Layout:
 - **Post-processor activity section:** two sublists showing `fixesApplied` and `hallucinationsStripped` from the job. Fixes use a teal accent; hallucinations use amber. Empty states handled per-sublist.
 - **Submit button:** posts the edited OCSF to `POST /api/review/:id/correct`. The reviewer identity is set from the JWT cookie on the backend, not from any field in the form. After submit, an inline banner shows "Corrected on {date} by {email}, republished as new OCSF event."
 
-The JSON editor is a plain `<textarea>` with monospace font. [VERIFY: whether a richer editor was added]
+The JSON editor is a plain `<textarea>` with monospace font. 
 
 ### Health
 
@@ -153,7 +153,7 @@ Every call includes `credentials: 'include'`. Responses are parsed via a shared 
 
 ### Native fetch, not axios
 
-The project uses the built-in `fetch` API, not axios. Do not introduce axios.
+The project uses the built-in `fetch` API, not axios. 
 
 ---
 
@@ -246,7 +246,7 @@ src/
 │   └── index.ts               # domain types (User, Job, etc.)
 │
 └── utils/
-    └── formatDate.ts          # [VERIFY: date helpers]
+    └── formatDate.ts          
 ```
 
 ---
@@ -261,13 +261,13 @@ npm install
 npm run dev
 ```
 
-Runs at `http://localhost:5173` [VERIFY]. The backend must be running somewhere reachable — set `VITE_API_URL` in a `.env.local` to point at it:
+Runs at `http://localhost:5173`. The backend must be running somewhere reachable — set `VITE_API_URL` in a `.env.local` to point at it:
 
 ```
 VITE_API_URL=http://localhost:3000/api
 ```
 
-Vite proxies `/api/*` requests in development if configured. [VERIFY: vite.config.ts proxy setup]
+Vite proxies `/api/*` requests in development if configured. 
 
 ### Production build
 
@@ -295,7 +295,7 @@ Vite exposes all `VITE_*` env vars at build time via `import.meta.env`.
 
 ## Testing
 
-[VERIFY: test coverage state]. The pattern to follow when adding tests:
+. The pattern to follow when adding tests:
 
 - React Testing Library
 - Co-locate specs next to components (`UserTable.test.tsx` alongside `UserTable.tsx`) or under `src/__tests__/`
