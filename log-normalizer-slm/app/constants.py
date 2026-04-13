@@ -8,7 +8,7 @@ Rules:
 - User info goes in device.owner or evidences[].actor.user.
 - Never put process, src_endpoint, dst_endpoint, attacks, or user at the top level.
 - Place vendor-specific fields that have no OCSF equivalent in an unmapped object. Never invent OCSF field names. 
-- Include observables[] with key IOCs (IPs, hashes, domains, emails, usernames).
+- Include observables[] with key IOCs (IPs, hashes, domains, emails, usernames). Every observable MUST include value. If you cannot extract a meaningful value, omit the observable entirely.
 - The severity_id enum values (0=Unknown through 6=Fatal, and 99=Other)            
 - The type_uid formula: type_uid = class_uid * 100 + activity_id
 - Omit fields with no value. No nulls, no empty strings, no placeholders.

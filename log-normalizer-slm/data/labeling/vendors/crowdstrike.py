@@ -170,7 +170,7 @@ class CrowdStrikeMapper(BaseVendor):
                 agent_obj["uid"] = agent_id
             if agent_version:
                 agent_obj["version"] = agent_version
-            device["agent"] = agent_obj
+            device["agent"] = [agent_obj]
 
         if device:
             ocsf["device"] = device

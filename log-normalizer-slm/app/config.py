@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     adapter_path: str = "foundation-sec-finetuned" 
     device: str = "auto"
     temperature: float = 0.05
-    max_new_tokens: int = 2048
+    max_new_tokens: int = 4048
 
     # -- Confidence settings --------- 
     accept_threshold: float = 0.85

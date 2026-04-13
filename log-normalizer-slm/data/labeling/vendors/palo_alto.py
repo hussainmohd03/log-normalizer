@@ -128,6 +128,10 @@ class PaloAltoMapper(BaseVendor):
             if os_obj:
                 device["os"] = os_obj
 
+        agent_version = alert.get("agent_version")
+        if agent_version:
+            device["agent"] = [{"name": "XDR Agent", "version": str(agent_version)}]
+
         if device:
             ocsf["device"] = device
 

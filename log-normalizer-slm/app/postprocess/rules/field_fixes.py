@@ -211,12 +211,90 @@ def strip_placeholder_values(ocsf: dict[str, Any]) -> RuleResult:
     return result
 
 
+def _resolve_dotpath(ocsf: dict[str, Any], path: str) -> Any:
+    """Walk a dot-separated OCSF path and return the leaf value, or None."""
+    current: Any = ocsf
+    for segment in path.split("."):
+        if isinstance(current, dict):
+            current = current.get(segment)
+        elif isinstance(current, list) and current:
+            current = current[0].get(segment) if isinstance(current[0], dict) else None
+        else:
+            return None
+    return current
+
+
+def fill_observable_values(ocsf: dict[str, Any]) -> RuleResult:
+    """Copy missing observable value from the OCSF path indicated by name."""
+    result = RuleResult()
+    observables = ocsf.get("observables")
+    if not isinstance(observables, list):
+        return result
+
+    surviving: list[dict[str, Any]] = []
+    for idx, obs in enumerate(observables):
+        if not isinstance(obs, dict):
+            surviving.append(obs)
+            continue
+
+        if obs.get("value"):
+            surviving.append(obs)
+            continue
+
+        name = obs.get("name")
+        if not isinstance(name, str) or not name:
+            continue  # drop: no name, no way to resolve
+
+        resolved = _resolve_dotpath(ocsf, name)
+        if isinstance(resolved, str) and resolved.strip():
+            obs["value"] = resolved.strip()
+            result.fixes.append(
+                f"filled observables[{idx}].value from {name}"
+            )
+            surviving.append(obs)
+        elif isinstance(resolved, list) and resolved:
+            first = next((v for v in resolved if isinstance(v, str) and v.strip()), None)
+            if first:
+                obs["value"] = first.strip()
+                result.fixes.append(
+                    f"filled observables[{idx}].value from {name}[0]"
+                )
+                surviving.append(obs)
+            else:
+                result.fixes.append(
+                    f"dropped observables[{idx}] (no resolvable value for {name})"
+                )
+        else:
+            result.fixes.append(
+                f"dropped observables[{idx}] (no resolvable value for {name})"
+            )
+
+    if len(surviving) != len(ocsf["observables"]):
+        ocsf["observables"] = surviving
+
+    return result
+
+
+def fix_category_uid(ocsf: dict[str, Any]) -> RuleResult:
+    """Ensure category_uid is 2 (Findings), not the class_uid value."""
+    result = RuleResult()
+    category_uid = ocsf.get("category_uid")
+    if category_uid is not None and category_uid != 2:
+        ocsf["category_uid"] = 2
+        result.fixes.append(
+            f"corrected category_uid: {category_uid} -> 2"
+        )
+    return result
+
+
 def run_field_fix_rules(ocsf: dict[str, Any]) -> RuleResult:
     result = RuleResult()
     result.merge(fix_observable_types(ocsf))
+    result.merge(fill_observable_values(ocsf))
     result.merge(fix_email_to_list(ocsf))
     result.merge(fix_email_from_string(ocsf))
     result.merge(fix_process_pid_int(ocsf))
     result.merge(strip_device_os_string(ocsf))
     result.merge(strip_placeholder_values(ocsf))
+    result.merge(fix_category_uid(ocsf))
     return result
