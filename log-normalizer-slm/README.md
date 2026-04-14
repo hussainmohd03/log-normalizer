@@ -401,7 +401,6 @@ Returns:
 | `MAX_NEW_TOKENS` | Generation length cap | |
 | `TEMPERATURE` | Sampling temperature |  |
 | `PORT` | FastAPI port | `8000` |
-| `INFERENCE_TIMEOUT_SECONDS` | `asyncio.wait_for` around the generate call | `600` |
 
 The `is_ready` flag is a runtime state, not an env var. It's set after the model and adapter are loaded successfully in `ModelManager.load()`.
 
