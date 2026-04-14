@@ -400,7 +400,6 @@ Returns:
 | `DEVICE` | `cuda` / `cuda:0` / `cpu` | `cuda` |
 | `MAX_NEW_TOKENS` | Generation length cap | |
 | `TEMPERATURE` | Sampling temperature |  |
-| `PORT` | FastAPI port | `8000` |
 
 The `is_ready` flag is a runtime state, not an env var. It's set after the model and adapter are loaded successfully in `ModelManager.load()`.
 
