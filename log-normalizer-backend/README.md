@@ -341,7 +341,6 @@ model TrainingExport {
 | `GET /jobs/:id` | `JwtOrApiKeyAuthGuard` | any | single job detail |
 | `GET /jobs/:id/events` | `JwtOrApiKeyAuthGuard` | any | SSE stream |
 | `POST /jobs/:id/flag-for-review` | `JwtAuthGuard` | `ANALYST` or `ADMIN` | human-initiated flag |
-| `POST /normalize/jobs/:id/retry` | `JwtAuthGuard` | any | clone failed job for retry |
 | `GET /review/*` | `JwtAuthGuard` | `ANALYST` or `ADMIN` | review queue and details |
 | `POST /review/:id/correct` | `JwtAuthGuard` | `ANALYST` or `ADMIN` | reviewer from `req.user.email`, republishes via supersedes |
 | `GET /metrics/*` | `JwtAuthGuard` | any | dashboard metrics |
