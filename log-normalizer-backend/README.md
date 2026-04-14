@@ -339,7 +339,6 @@ model TrainingExport {
 | `POST /logs/ingest/batch` | `ApiKeyAuthGuard` | - | machine ingestion only |
 | `GET /jobs` | `JwtAuthGuard` | any | browse with filters and pagination |
 | `GET /jobs/:id` | `JwtOrApiKeyAuthGuard` | any | single job detail |
-| `GET /jobs/:id/events` | `JwtOrApiKeyAuthGuard` | any | SSE stream |
 | `POST /jobs/:id/flag-for-review` | `JwtAuthGuard` | `ANALYST` or `ADMIN` | human-initiated flag |
 | `GET /review/*` | `JwtAuthGuard` | `ANALYST` or `ADMIN` | review queue and details |
 | `POST /review/:id/correct` | `JwtAuthGuard` | `ANALYST` or `ADMIN` | reviewer from `req.user.email`, republishes via supersedes |
