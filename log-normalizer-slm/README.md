@@ -409,7 +409,7 @@ The `is_ready` flag is a runtime state, not an env var. It's set after the model
 
 ```bash
 cd log-normalizer-slm
-source .venv/bin/activate
+source .venv/scripts/activate
 pytest tests/unit
 ```
 
