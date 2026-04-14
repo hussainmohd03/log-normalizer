@@ -121,7 +121,6 @@ log-normalizer/
     ├── src/
     │   ├── pages/
     │   ├── components/
-    │   ├── context/            # AuthContext
     │   └── api/
     ├── Dockerfile
     └── README.md               # ← UI deep dive
